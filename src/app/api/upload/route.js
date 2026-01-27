@@ -92,12 +92,17 @@ export async function POST(request) {
         uploadDate,
         fileSize: nplFile.size,
         monthInfo
-      }), { access: 'public', addRandomSuffix: false })
+      }), { 
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true
+         })
       console.log('NPL metadata uploaded:', nplMetaResult.url)
 
       const nplDataResult = await put('npl_parsed.json', JSON.stringify(nplData), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
       console.log('NPL data uploaded:', nplDataResult.url)
 
@@ -106,12 +111,13 @@ export async function POST(request) {
         uploadDate,
         fileSize: kol2File.size,
         monthInfo
-      }), { access: 'public', addRandomSuffix: false })
+      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
       console.log('KOL2 metadata uploaded:', kol2MetaResult.url)
 
       const kol2DataResult = await put('kol2_parsed.json', JSON.stringify(kol2Data), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
       console.log('KOL2 data uploaded:', kol2DataResult.url)
 
@@ -120,29 +126,33 @@ export async function POST(request) {
         uploadDate,
         fileSize: realisasiFile.size,
         monthInfo
-      }), { access: 'public', addRandomSuffix: false })
+      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
       console.log('Realisasi metadata uploaded:', realisasiMetaResult.url)
 
       const realisasiDataResult = await put('realisasi_parsed.json', JSON.stringify(realisasiData), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
       console.log('Realisasi data uploaded:', realisasiDataResult.url)
 
       // Upload HISTORICAL versions (with date prefix)
       await put(`history/${datePrefix}_npl.json`, JSON.stringify(nplData), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
 
       await put(`history/${datePrefix}_kol2.json`, JSON.stringify(kol2Data), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
 
       await put(`history/${datePrefix}_realisasi.json`, JSON.stringify(realisasiData), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
 
       // Update history index
@@ -150,10 +160,10 @@ export async function POST(request) {
         uploadDate,
         monthInfo,
         files: [nplFile.name, kol2File.name, realisasiFile.name]
-      }), { access: 'public', addRandomSuffix: false })
+      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
 
       // Update consolidated history index
-      const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://pgrnuw5fcdcfjo0d.public.blob.vercel-storage.com'
+      const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
       let historyIndex = { entries: [] }
 
       try {
@@ -182,7 +192,8 @@ export async function POST(request) {
 
       await put('history_index.json', JSON.stringify(historyIndex), {
         access: 'public',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       })
 
       return NextResponse.json({

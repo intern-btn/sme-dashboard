@@ -7,11 +7,11 @@ export async function GET(request, { params }) {
 
   try {
     // Direct Blob URL (from Blob storage settings)
-    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://pgrnuw5fcdcfjo0d.public.blob.vercel-storage.com'
+    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
     const blobUrl = `${blobBaseUrl}/${type}_${file}.json`
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
     const response = await fetch(blobUrl, {
       cache: 'no-store',

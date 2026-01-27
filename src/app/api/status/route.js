@@ -4,7 +4,7 @@ export const runtime = 'edge'
 
 export async function GET() {
   try {
-    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://pgrnuw5fcdcfjo0d.public.blob.vercel-storage.com'
+    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
 
     const fetchMeta = async (type) => {
       try {

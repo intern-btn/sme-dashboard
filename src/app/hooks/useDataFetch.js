@@ -9,7 +9,7 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
   const [error, setError] = useState(null)
   const [noData, setNoData] = useState(false)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (retryCount = 0) => {
     try {
       // Fetch metadata
       const metaResponse = await fetch(`/api/data/${dataType}/metadata`)
@@ -31,8 +31,21 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
         } else {
           setNoData(true)
         }
-      } else if (dataResponse.status === 404 || dataResponse.status === 504) {
-        // No data uploaded yet or timeout
+      } else if (dataResponse.status === 504) {
+        // Timeout - retry up to 3 times with exponential backoff
+        if (retryCount < 3) {
+          console.log(`Timeout on ${dataType}, retrying (${retryCount + 1}/3)...`)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)))
+          return fetchData(retryCount + 1)
+        } else {
+          // After 3 retries, only show error if we don't have cached data
+          if (!data) {
+            setNoData(true)
+          }
+          setError('Connection slow - retrying...')
+        }
+      } else if (dataResponse.status === 404) {
+        // No data uploaded yet
         setNoData(true)
         setError(null)
       } else {
@@ -44,11 +57,14 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
       if (err.message !== 'Failed to fetch data') {
         setError(err.message)
       }
-      setNoData(true)
+      // Don't set noData if we already have cached data
+      if (!data) {
+        setNoData(true)
+      }
     } finally {
       setLoading(false)
     }
-  }, [dataType])
+  }, [dataType, data])
 
   useEffect(() => {
     // Fetch immediately
