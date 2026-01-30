@@ -32,9 +32,13 @@ export default function Realisasi({ data }) {
     currentTotal: day.total || 0,
     currentKur: day.kur || 0,
     currentKumk: day.kumk || 0,
+    currentKppSupply: day.kppSupply || 0,
+    currentKppDemand: day.kppDemand || 0,
     previousTotal: day.total_previous || 0,
     previousKur: day.kur_previous || 0,
-    previousKumk: day.kumk_previous || 0
+    previousKumk: day.kumk_previous || 0,
+    previousKppSupply: day.kppSupply_previous || 0,
+    previousKppDemand: day.kppDemand_previous || 0
   }))
 
   // Calculate totals
@@ -48,7 +52,7 @@ export default function Realisasi({ data }) {
     <div className="min-h-screen p-8 fade-in bg-white">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-primary mb-2">
+        <h1 className="text-4xl font-bold mb-2 uppercase" style={{ color: '#003d7a' }}>
           REALISASI KREDIT SME HARIAN
         </h1>
         <p className="text-gray-600 text-lg">
@@ -58,41 +62,41 @@ export default function Realisasi({ data }) {
 
       {/* Monthly Summary */}
       <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-5">
-          <div className="text-purple-700 text-sm mb-1 font-medium">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
-          <div className="text-3xl font-bold text-purple-900">
+        <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
+          <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
+          <div className="text-3xl font-bold text-gray-900">
             Rp {formatCurrency(previousTotal)} Jt
           </div>
-          <div className="text-xs text-purple-600 mt-1">s.d. tanggal {maxDay}</div>
+          <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-primary rounded-xl p-5">
-          <div className="text-primary text-sm mb-1 font-medium">{currentMonth?.fullLabel || 'Bulan Ini'}</div>
-          <div className="text-3xl font-bold text-blue-900">
+        <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
+          <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{currentMonth?.fullLabel || 'Bulan Ini'}</div>
+          <div className="text-3xl font-bold" style={{ color: '#003d7a' }}>
             Rp {formatCurrency(currentTotal)} Jt
           </div>
-          <div className="text-xs text-blue-600 mt-1">s.d. tanggal {maxDay}</div>
+          <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
         </div>
 
-        <div className={`bg-gradient-to-br rounded-xl p-5 border-2 ${
+        <div className={`bg-gray-50 rounded-lg p-5 border-l-4 shadow-sm ${
           growth >= 0
-            ? 'from-green-50 to-green-100 border-green-300'
-            : 'from-red-50 to-red-100 border-red-300'
+            ? 'border-green-600'
+            : 'border-red-600'
         }`}>
-          <div className={`text-sm mb-1 font-medium ${growth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+          <div className={`text-sm mb-1 font-medium uppercase ${growth >= 0 ? 'text-gray-600' : 'text-gray-600'}`}>
             Pertumbuhan
           </div>
-          <div className={`text-3xl font-bold ${growth >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-            {growth >= 0 ? '↑' : '↓'} {Math.abs(growth).toFixed(2)}%
+          <div className={`text-3xl font-bold ${growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {growth >= 0 ? '+' : ''}{growth.toFixed(2)}%
           </div>
-          <div className="text-xs text-gray-600 mt-1">vs {previousMonth?.name || 'Bulan Lalu'} MTD</div>
+          <div className="text-xs text-gray-500 mt-1">vs {previousMonth?.name || 'Bulan Lalu'} MTD</div>
         </div>
       </div>
 
       {/* Tabbed Comparison Chart */}
-      <div className="bg-white border-2 border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+      <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
             Perbandingan {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
           </h2>
 
@@ -102,9 +106,10 @@ export default function Realisasi({ data }) {
               onClick={() => setActiveView('total')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeView === 'total'
-                  ? 'bg-primary text-white'
+                  ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              style={activeView === 'total' ? { backgroundColor: '#003d7a' } : {}}
             >
               Total Realisasi
             </button>
@@ -112,9 +117,10 @@ export default function Realisasi({ data }) {
               onClick={() => setActiveView('kur')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeView === 'kur'
-                  ? 'bg-primary text-white'
+                  ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              style={activeView === 'kur' ? { backgroundColor: '#003d7a' } : {}}
             >
               KUR
             </button>
@@ -122,11 +128,34 @@ export default function Realisasi({ data }) {
               onClick={() => setActiveView('kumk')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeView === 'kumk'
-                  ? 'bg-primary text-white'
+                  ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              style={activeView === 'kumk' ? { backgroundColor: '#003d7a' } : {}}
             >
               KUMK
+            </button>
+            <button
+              onClick={() => setActiveView('kppSupply')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeView === 'kppSupply'
+                  ? 'text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              style={activeView === 'kppSupply' ? { backgroundColor: '#003d7a' } : {}}
+            >
+              KPP Supply
+            </button>
+            <button
+              onClick={() => setActiveView('kppDemand')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeView === 'kppDemand'
+                  ? 'text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              style={activeView === 'kppDemand' ? { backgroundColor: '#003d7a' } : {}}
+            >
+              KPP Demand
             </button>
           </div>
         </div>
@@ -230,26 +259,75 @@ export default function Realisasi({ data }) {
                 />
               </>
             )}
+
+            {activeView === 'kppSupply' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="currentKppSupply"
+                  stroke="#1976D2"
+                  strokeWidth={3}
+                  name={`KPP Supply ${currentMonth?.name || 'Bulan Ini'}`}
+                  dot={{ fill: '#1976D2', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="previousKppSupply"
+                  stroke="#9333EA"
+                  strokeWidth={3}
+                  name={`KPP Supply ${previousMonth?.name || 'Bulan Lalu'}`}
+                  dot={{ fill: '#9333EA', r: 4 }}
+                  strokeDasharray="5 5"
+                />
+              </>
+            )}
+
+            {activeView === 'kppDemand' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="currentKppDemand"
+                  stroke="#1976D2"
+                  strokeWidth={3}
+                  name={`KPP Demand ${currentMonth?.name || 'Bulan Ini'}`}
+                  dot={{ fill: '#1976D2', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="previousKppDemand"
+                  stroke="#9333EA"
+                  strokeWidth={3}
+                  name={`KPP Demand ${previousMonth?.name || 'Bulan Lalu'}`}
+                  dot={{ fill: '#9333EA', r: 4 }}
+                  strokeDasharray="5 5"
+                />
+              </>
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       {/* Daily Table */}
-      <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b-2 border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">
+      <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-gray-300" style={{ backgroundColor: '#f8f9fa' }}>
+          <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
             Realisasi Per Hari - {currentMonth?.fullLabel || 'Bulan Ini'}
           </h2>
         </div>
 
         <div className="overflow-auto max-h-[400px] custom-scrollbar">
           <table className="w-full">
-            <thead className="sticky top-0 bg-primary text-white">
+            <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-left text-sm">
                 <th className="py-3 px-4 font-semibold">Tanggal</th>
                 <th className="py-3 px-4 text-right font-semibold">KUR</th>
-                <th className="py-3 px-4 text-right font-semibold">KUMK</th>
+                <th className="py-3 px-4 text-right font-semibold">KUMK PRK</th>
                 <th className="py-3 px-4 text-right font-semibold">SME Swadana</th>
+                <th className="py-3 px-4 text-right font-semibold">KUMK Lainnya</th>
+                <th className="py-3 px-4 text-right font-semibold">KPP Supply</th>
+                <th className="py-3 px-4 text-right font-semibold">KPP Demand</th>
                 <th className="py-3 px-4 text-right font-semibold">Total</th>
                 <th className="py-3 px-4 text-center font-semibold">Trend</th>
               </tr>
@@ -263,9 +341,9 @@ export default function Realisasi({ data }) {
                 return (
                   <tr
                     key={idx}
-                    className="border-b border-gray-200 hover:bg-blue-50 transition-colors"
+                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
-                    <td className="py-3 px-4 text-primary font-semibold">
+                    <td className="py-3 px-4 font-semibold" style={{ color: '#003d7a' }}>
                       {day.date} {currentMonth?.shortName || ''}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
@@ -277,6 +355,15 @@ export default function Realisasi({ data }) {
                     <td className="py-3 px-4 text-right text-gray-900">
                       {formatCurrency(day.smeSwadana)}
                     </td>
+                    <td className="py-3 px-4 text-right text-gray-900">
+                      {formatCurrency(day.kumkLainnya || 0)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-blue-600">
+                      {formatCurrency(day.kppSupply || 0)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-purple-600">
+                      {formatCurrency(day.kppDemand || 0)}
+                    </td>
                     <td className="py-3 px-4 text-right text-gray-900 font-bold">
                       {formatCurrency(day.total)}
                     </td>
@@ -284,11 +371,11 @@ export default function Realisasi({ data }) {
                       {idx === 0 ? (
                         <span className="text-gray-400">-</span>
                       ) : isUp ? (
-                        <span className="text-green-600 font-bold">↑ {formatCurrency(Math.abs(diff))}</span>
+                        <span className="text-green-600 font-bold">+ {formatCurrency(Math.abs(diff))}</span>
                       ) : diff < 0 ? (
-                        <span className="text-red-600 font-bold">↓ {formatCurrency(Math.abs(diff))}</span>
+                        <span className="text-red-600 font-bold">- {formatCurrency(Math.abs(diff))}</span>
                       ) : (
-                        <span className="text-gray-500">→</span>
+                        <span className="text-gray-500">-</span>
                       )}
                     </td>
                   </tr>
@@ -301,7 +388,7 @@ export default function Realisasi({ data }) {
 
       {/* Navigation hint */}
       <div className="mt-6 text-center text-gray-500 text-sm">
-        <p>Klik navigasi di bawah atau tekan → untuk kembali ke Dashboard</p>
+        <p>Klik navigasi di bawah untuk kembali ke Dashboard</p>
       </div>
     </div>
   )

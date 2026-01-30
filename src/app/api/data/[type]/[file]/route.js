@@ -7,8 +7,13 @@ export async function GET(request, { params }) {
 
   try {
     // Direct Blob URL (from Blob storage settings)
-    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
-    const blobUrl = `${blobBaseUrl}/${type}_${file}.json`
+    if (!process.env.BLOB_BASE_URL) {
+      return NextResponse.json(
+        { error: 'Blob storage not configured. Please upload data first.' },
+        { status: 503 }
+      )
+    }
+    const blobUrl = `${process.env.BLOB_BASE_URL}/${type}_${file}.json`
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout

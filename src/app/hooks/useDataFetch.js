@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-export function useDataFetch(dataType, refreshInterval = 30000) {
+export function useDataFetch(dataType, refreshInterval = null) {
   const [data, setData] = useState(null)
   const [metadata, setMetadata] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -11,6 +11,8 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
 
   const fetchData = useCallback(async (retryCount = 0) => {
     try {
+      setLoading(true)
+
       // Fetch metadata
       const metaResponse = await fetch(`/api/data/${dataType}/metadata`)
       if (metaResponse.ok) {
@@ -32,19 +34,15 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
           setNoData(true)
         }
       } else if (dataResponse.status === 504) {
-        // Timeout - retry up to 3 times with exponential backoff
+        // Timeout - retry up to 3 times
         if (retryCount < 3) {
           console.log(`Timeout on ${dataType}, retrying (${retryCount + 1}/3)...`)
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)))
           return fetchData(retryCount + 1)
         } else {
-          // After 3 retries, only show error if we don't have cached data
-          if (!data) {
-            setNoData(true)
-          }
-          setError('Connection slow - retrying...')
+          setError('Connection slow - please refresh manually')
         }
-      } else if (dataResponse.status === 404) {
+      } else if (dataResponse.status === 404 || dataResponse.status === 503) {
         // No data uploaded yet
         setNoData(true)
         setError(null)
@@ -53,28 +51,28 @@ export function useDataFetch(dataType, refreshInterval = 30000) {
       }
 
     } catch (err) {
-      // Only set error for actual failures, not missing data
-      if (err.message !== 'Failed to fetch data') {
-        setError(err.message)
-      }
-      // Don't set noData if we already have cached data
-      if (!data) {
-        setNoData(true)
-      }
+      console.error(`Error fetching ${dataType}:`, err)
+      setError(err.message)
+      setNoData(true)
     } finally {
       setLoading(false)
     }
-  }, [dataType, data])
+  }, [dataType])
 
   useEffect(() => {
-    // Fetch immediately
+    // Fetch immediately on mount
     fetchData()
 
-    // Then every X seconds
-    const interval = setInterval(fetchData, refreshInterval)
-
-    return () => clearInterval(interval)
+    // Set up interval if refreshInterval is specified
+    if (refreshInterval) {
+      const interval = setInterval(fetchData, refreshInterval)
+      return () => clearInterval(interval)
+    }
   }, [fetchData, refreshInterval])
 
-  return { data, metadata, loading, error, noData }
+  const refresh = useCallback(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { data, metadata, loading, error, noData, refresh }
 }

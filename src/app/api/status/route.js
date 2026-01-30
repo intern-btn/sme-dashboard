@@ -20,13 +20,15 @@ export async function GET() {
       return null
     }
 
-    const [npl, kol2, realisasi] = await Promise.all([
+    const [npl, kol2, realisasi, realisasi_kredit, posisi_kredit] = await Promise.all([
       fetchMeta('npl'),
       fetchMeta('kol2'),
-      fetchMeta('realisasi')
+      fetchMeta('realisasi'),
+      fetchMeta('realisasi_kredit'),
+      fetchMeta('posisi_kredit')
     ])
 
-    return NextResponse.json({ npl, kol2, realisasi })
+    return NextResponse.json({ npl, kol2, realisasi, realisasi_kredit, posisi_kredit })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

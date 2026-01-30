@@ -9,11 +9,13 @@ export default function AdminPage() {
   const [nplFile, setNplFile] = useState(null)
   const [kol2File, setKol2File] = useState(null)
   const [realisasiFile, setRealisasiFile] = useState(null)
+  const [realisasiKreditFile, setRealisasiKreditFile] = useState(null)
+  const [posisiKreditFile, setPosisiKreditFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [uploadStats, setUploadStats] = useState(null)
-  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null })
+  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null })
   const [history, setHistory] = useState([])
 
   useEffect(() => {
@@ -80,8 +82,8 @@ export default function AdminPage() {
   }
 
   const handleUpload = async () => {
-    if (!nplFile || !kol2File || !realisasiFile) {
-      setError('Pilih semua 3 file Excel')
+    if (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile) {
+      setError('Pilih minimal 1 file Excel')
       return
     }
 
@@ -92,9 +94,11 @@ export default function AdminPage() {
 
     try {
       const formData = new FormData()
-      formData.append('npl', nplFile)
-      formData.append('kol2', kol2File)
-      formData.append('realisasi', realisasiFile)
+      if (nplFile) formData.append('npl', nplFile)
+      if (kol2File) formData.append('kol2', kol2File)
+      if (realisasiFile) formData.append('realisasi', realisasiFile)
+      if (realisasiKreditFile) formData.append('realisasi_kredit', realisasiKreditFile)
+      if (posisiKreditFile) formData.append('posisi_kredit', posisiKreditFile)
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -112,6 +116,8 @@ export default function AdminPage() {
       setNplFile(null)
       setKol2File(null)
       setRealisasiFile(null)
+      setRealisasiKreditFile(null)
+      setPosisiKreditFile(null)
 
       document.querySelectorAll('input[type="file"]').forEach(input => {
         input.value = ''
@@ -264,13 +270,39 @@ export default function AdminPage() {
                 />
                 {realisasiFile && <p className="mt-1 text-sm text-green-600">{realisasiFile.name}</p>}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  4. Realisasi Kredit (.xlsx)
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setRealisasiKreditFile(e.target.files[0])}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {realisasiKreditFile && <p className="mt-1 text-sm text-green-600">{realisasiKreditFile.name}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  5. Posisi Kredit (.xlsx)
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setPosisiKreditFile(e.target.files[0])}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {posisiKreditFile && <p className="mt-1 text-sm text-green-600">{posisiKreditFile.name}</p>}
+              </div>
             </div>
 
             <button
               onClick={handleUpload}
-              disabled={uploading || !nplFile || !kol2File || !realisasiFile}
+              disabled={uploading || (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile)}
               className={`mt-6 w-full py-3 rounded-lg font-semibold text-white transition-colors ${
-                uploading || !nplFile || !kol2File || !realisasiFile
+                uploading || (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile)
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
@@ -285,7 +317,9 @@ export default function AdminPage() {
                   <div className="mt-2 text-sm text-green-600">
                     <p>NPL: {uploadStats.nplKanwil} kanwil, {uploadStats.nplCabang} cabang</p>
                     <p>KOL2: {uploadStats.kol2Kanwil} kanwil, {uploadStats.kol2Cabang} cabang</p>
-                    <p>Realisasi: {uploadStats.realisasiDays} hari</p>
+                    <p>Realisasi Harian: {uploadStats.realisasiDays} hari</p>
+                    <p>Realisasi Kredit: {uploadStats.realisasiKreditKanwil} kanwil, {uploadStats.realisasiKreditCabang} cabang</p>
+                    <p>Posisi Kredit: {uploadStats.posisiKreditKanwil} kanwil, {uploadStats.posisiKreditCabang} cabang</p>
                   </div>
                 )}
               </div>
@@ -318,9 +352,23 @@ export default function AdminPage() {
               </div>
 
               <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Realisasi</div>
+                <div className="text-sm font-medium text-gray-700">Realisasi Harian</div>
                 <div className="text-xs text-gray-500 mt-1">
                   {currentData.realisasi ? formatDate(currentData.realisasi.uploadDate) : 'Belum ada data'}
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium text-gray-700">Realisasi Kredit</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {currentData.realisasi_kredit ? formatDate(currentData.realisasi_kredit.uploadDate) : 'Belum ada data'}
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium text-gray-700">Posisi Kredit</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {currentData.posisi_kredit ? formatDate(currentData.posisi_kredit.uploadDate) : 'Belum ada data'}
                 </div>
               </div>
             </div>

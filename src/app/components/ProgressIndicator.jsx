@@ -1,19 +1,33 @@
 'use client'
 
 export default function ProgressIndicator({ currentPage, pageName, onNavigate }) {
-  const pages = [
-    { id: -1, name: 'Realisasi', short: 'Rea' },
-    { id: 0, name: 'Dashboard', short: 'Dash' },
-    { id: 1, name: 'Jakarta I', short: 'Jkt1' },
-    { id: 2, name: 'Jakarta II', short: 'Jkt2' },
-    { id: 3, name: 'Jateng DIY', short: 'JTG' },
-    { id: 4, name: 'Jabanus', short: 'JBN' },
-    { id: 5, name: 'Jawa Barat', short: 'JBR' },
-    { id: 6, name: 'Kalimantan', short: 'KAL' },
-    { id: 7, name: 'Sulampua', short: 'SLP' },
-    { id: 8, name: 'Sumatera 1', short: 'SM1' },
-    { id: 9, name: 'Sumatera 2', short: 'SM2' },
-  ]
+  // Determine which section to show dots for
+  let pages = []
+  let section = ''
+
+  if (currentPage === -1) {
+    // Realisasi - show just itself
+    pages = [{ id: -1, name: 'Realisasi Harian' }]
+    section = 'Realisasi'
+  } else if (currentPage === 0) {
+    // Overview - show just itself
+    pages = [{ id: 0, name: 'Overview Dashboard' }]
+    section = 'Overview'
+  } else if (currentPage >= 1 && currentPage <= 9) {
+    // Kanwil section
+    pages = [
+      { id: 1, name: 'Jakarta I' },
+      { id: 2, name: 'Jakarta II' },
+      { id: 3, name: 'Jateng DIY' },
+      { id: 4, name: 'Jabanus' },
+      { id: 5, name: 'Jawa Barat' },
+      { id: 6, name: 'Kalimantan' },
+      { id: 7, name: 'Sulampua' },
+      { id: 8, name: 'Sumatera 1' },
+      { id: 9, name: 'Sumatera 2' },
+    ]
+    section = 'Kanwil Detail'
+  }
 
   return (
     <div className="fixed bottom-8 left-0 right-0 flex items-center justify-center z-50">
@@ -44,7 +58,7 @@ export default function ProgressIndicator({ currentPage, pageName, onNavigate })
 
           {/* Current page info */}
           <div className="ml-4 flex items-center gap-3 border-l border-gray-600 pl-4">
-            <span className="text-gray-400 text-sm">Halaman:</span>
+            <span className="text-gray-400 text-sm">{section}:</span>
             <span className="text-white font-semibold text-lg">
               {pageName}
             </span>
