@@ -25,9 +25,9 @@ export default function Dashboard({
 
   const tabs = [
     { id: 'npl', label: 'NPL', color: 'blue' },
-    { id: 'kol2', label: 'KOL 2', color: 'yellow' },
-    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'green' },
-    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'purple' }
+    { id: 'kol2', label: 'KOL 2', color: 'blue' },
+    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'blue' },
+    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'blue' }
   ]
 
   const getActiveData = () => {
@@ -74,36 +74,25 @@ export default function Dashboard({
         <div className="flex">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id
-            let bgColor = 'bg-gray-50'
-            let textColor = 'text-gray-700'
-            let borderColor = ''
 
             if (isActive) {
-              if (tab.id === 'npl') {
-                bgColor = 'text-white'
-                textColor = 'text-white'
-                borderColor = 'border-b-4'
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 px-6 py-3 font-semibold transition-all ${bgColor} ${textColor} ${borderColor}`}
-                    style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              }
-              bgColor = `bg-${tab.color}-600`
-              textColor = 'text-white'
-              borderColor = 'border-b-4 border-orange-500'
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex-1 px-6 py-3 font-semibold transition-all text-white border-b-4"
+                  style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
+                >
+                  {tab.label}
+                </button>
+              )
             }
 
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-6 py-3 font-semibold transition-all ${bgColor} ${textColor} ${borderColor} hover:bg-gray-100`}
+                className="flex-1 px-6 py-3 font-semibold transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
               >
                 {tab.label}
               </button>
@@ -233,20 +222,20 @@ function KOL2Content({ data, metadata }) {
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL KOL 2 - {monthInfo.current.fullLabel}</h2>
           <div className="grid grid-cols-3 gap-6">
-            <div className="bg-gray-50 border-l-4 border-yellow-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total KOL 2</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
-              <div className="text-xl text-yellow-600 font-semibold">{(totalNasional.totalPercent_current || 0).toFixed(2)}%</div>
+              <div className="text-xl font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.totalPercent_current || 0).toFixed(2)}%</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-yellow-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kumk_current)}</div>
-              <div className="text-lg text-yellow-600 font-semibold">{(totalNasional.kumkPercent_current || 0).toFixed(2)}%</div>
+              <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kumkPercent_current || 0).toFixed(2)}%</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-yellow-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kur_current)}</div>
-              <div className="text-lg text-yellow-600 font-semibold">{(totalNasional.kurPercent_current || 0).toFixed(2)}%</div>
+              <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kurPercent_current || 0).toFixed(2)}%</div>
             </div>
           </div>
         </div>
@@ -260,7 +249,7 @@ function KOL2Content({ data, metadata }) {
           </div>
           <div className="overflow-auto">
             <table className="w-full">
-              <thead className="sticky top-0 bg-yellow-600 text-white">
+              <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
                   <th className="py-3 px-4 text-left font-semibold">Kanwil</th>
@@ -278,11 +267,11 @@ function KOL2Content({ data, metadata }) {
                     <td className="py-3 px-4">{i + 1}</td>
                     <td className="py-3 px-4 font-medium">{k.name}</td>
                     <td className="py-3 px-4 text-right">{f(k.kumk_current || 0)}</td>
-                    <td className="py-3 px-4 text-right text-yellow-600 font-semibold">{(k.kumkPercent_current || 0).toFixed(2)}%</td>
+                    <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{(k.kumkPercent_current || 0).toFixed(2)}%</td>
                     <td className="py-3 px-4 text-right">{f(k.kur_current || 0)}</td>
-                    <td className="py-3 px-4 text-right text-yellow-600 font-semibold">{(k.kurPercent_current || 0).toFixed(2)}%</td>
+                    <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{(k.kurPercent_current || 0).toFixed(2)}%</td>
                     <td className="py-3 px-4 text-right font-semibold">{f(k.total_current || 0)}</td>
-                    <td className="py-3 px-4 text-right text-yellow-600 font-bold">{(k.totalPercent_current || 0).toFixed(2)}%</td>
+                    <td className="py-3 px-4 text-right font-bold" style={{ color: '#003d7a' }}>{(k.totalPercent_current || 0).toFixed(2)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -321,7 +310,7 @@ function RealisasiKreditContent({ data, metadata }) {
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL REALISASI KREDIT{monthInfo?.current?.fullLabel ? ` - ${monthInfo.current.fullLabel}` : ''}</h2>
           <div className="grid grid-cols-4 gap-4">
-            <div className="bg-gray-50 border-l-4 border-green-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kumk_real_current || 0)}</div>
               <div className="text-sm text-gray-500">1-{monthInfo.current?.day || 26} {monthInfo.current?.shortName || 'Jan'}'26</div>
@@ -336,9 +325,9 @@ function RealisasiKreditContent({ data, metadata }) {
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.umkm_real_current || 0)}</div>
               <div className="text-sm text-gray-500">Real UMKM</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-green-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total Realisasi</div>
-              <div className="text-2xl font-bold text-green-600 mb-1">Rp {f((totalNasional.kumk_real_current || 0) + (totalNasional.kur_total_current || 0) + (totalNasional.umkm_real_current || 0))}</div>
+              <div className="text-2xl font-bold mb-1" style={{ color: '#003d7a' }}>Rp {f((totalNasional.kumk_real_current || 0) + (totalNasional.kur_total_current || 0) + (totalNasional.umkm_real_current || 0))}</div>
               <div className="text-sm text-gray-500">KUMK + KUR + UMKM</div>
             </div>
           </div>
@@ -353,7 +342,7 @@ function RealisasiKreditContent({ data, metadata }) {
           </div>
           <div className="overflow-auto">
             <table className="w-full">
-              <thead className="sticky top-0 bg-green-600 text-white">
+              <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
                   <th className="py-3 px-4 text-left font-semibold">Kanwil</th>
@@ -376,8 +365,8 @@ function RealisasiKreditContent({ data, metadata }) {
                       <td className="py-3 px-4 text-right">{f(k.kumk_real_current || 0)}</td>
                       <td className="py-3 px-4 text-right">{f(k.kur_total_current || 0)}</td>
                       <td className="py-3 px-4 text-right">{f(k.umkm_real_current || 0)}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-green-600">{f(totalRealisasi)}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-green-600">{avgPcpRkap.toFixed(1)}%</td>
+                      <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(totalRealisasi)}</td>
+                      <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{avgPcpRkap.toFixed(1)}%</td>
                     </tr>
                   )
                 })}
@@ -417,21 +406,21 @@ function PosisiKreditContent({ data, metadata }) {
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL POSISI KREDIT{monthInfo?.current?.fullLabel ? ` - ${monthInfo.current.fullLabel}` : ''}</h2>
           <div className="grid grid-cols-4 gap-4">
-            <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Posisi Awal Jan</div>
               <div className="text-2xl font-bold text-gray-900">Rp {f(totalNasional.posisi_jan || 0)}</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Posisi Current</div>
-              <div className="text-2xl font-bold text-purple-600">Rp {f(totalNasional.posisi_current || 0)}</div>
+              <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(totalNasional.posisi_current || 0)}</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Gap MTD</div>
               <div className="text-2xl font-bold text-gray-900">Rp {f(totalNasional.gap_mtd || 0)}</div>
             </div>
-            <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
+            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Gap YoY</div>
-              <div className="text-2xl font-bold text-purple-600">Rp {f(totalNasional.gap_yoy || 0)}</div>
+              <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(totalNasional.gap_yoy || 0)}</div>
             </div>
           </div>
         </div>
@@ -445,7 +434,7 @@ function PosisiKreditContent({ data, metadata }) {
           </div>
           <div className="overflow-auto">
             <table className="w-full">
-              <thead className="sticky top-0 bg-purple-600 text-white">
+              <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
                   <th className="py-3 px-4 text-left font-semibold">Kanwil</th>
@@ -465,9 +454,9 @@ function PosisiKreditContent({ data, metadata }) {
                     <td className="py-3 px-4 text-right">{f(k.posisi_jan || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(k.realisasi || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(k.runoff || 0)}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-purple-600">{f(k.posisi_current || 0)}</td>
+                    <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(k.posisi_current || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(k.gap_mtd || 0)}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-purple-600">{f(k.gap_yoy || 0)}</td>
+                    <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(k.gap_yoy || 0)}</td>
                   </tr>
                 ))}
               </tbody>

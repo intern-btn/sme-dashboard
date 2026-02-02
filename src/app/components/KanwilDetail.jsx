@@ -30,9 +30,9 @@ export default function KanwilDetail({
 
   const tabs = [
     { id: 'npl', label: 'NPL', color: 'blue' },
-    { id: 'kol2', label: 'KOL 2', color: 'yellow' },
-    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'green' },
-    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'purple' }
+    { id: 'kol2', label: 'KOL 2', color: 'blue' },
+    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'blue' },
+    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'blue' }
   ]
 
   const getActiveData = () => {
@@ -58,36 +58,25 @@ export default function KanwilDetail({
           <div className="flex">
             {tabs.map(tab => {
               const isActive = activeTab === tab.id
-              let bgColor = 'bg-gray-50'
-              let textColor = 'text-gray-700'
-              let borderColor = ''
 
               if (isActive) {
-                if (tab.id === 'npl') {
-                  bgColor = 'text-white'
-                  textColor = 'text-white'
-                  borderColor = 'border-b-4'
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex-1 px-4 py-2 font-semibold text-sm transition-all ${bgColor} ${textColor} ${borderColor}`}
-                      style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
-                    >
-                      {tab.label}
-                    </button>
-                  )
-                }
-                bgColor = `bg-${tab.color}-600`
-                textColor = 'text-white'
-                borderColor = 'border-b-4 border-orange-500'
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className="flex-1 px-4 py-2 font-semibold text-sm transition-all text-white border-b-4"
+                    style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
+                  >
+                    {tab.label}
+                  </button>
+                )
               }
 
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-4 py-2 font-semibold text-sm transition-all ${bgColor} ${textColor} ${borderColor} hover:bg-gray-100`}
+                  className="flex-1 px-4 py-2 font-semibold text-sm transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
                 >
                   {tab.label}
                 </button>
@@ -349,12 +338,12 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary KOL 2 {kanwilName}</h2>
         <div className="grid grid-cols-3 gap-4">
-          <div className="border-l-4 border-yellow-600 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total KOL 2</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.total_current)}</span>
-              <span className="text-yellow-600 font-semibold">{(kanwilSummary.totalPercent_current || 0).toFixed(2)}%</span>
+              <span className="font-semibold" style={{ color: '#003d7a' }}>{(kanwilSummary.totalPercent_current || 0).toFixed(2)}%</span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-xs text-gray-500">{previousDateLabel}</span>
@@ -400,7 +389,7 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
         </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
-            <thead className="sticky top-0 bg-yellow-600 text-white">
+            <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
@@ -418,7 +407,7 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
                   <td className="py-3 px-4">{i + 1}</td>
                   <td className="py-3 px-4 font-medium">{c.name}</td>
                   <td className="py-3 px-4 text-right">{f(c.total_current)}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-yellow-600">{(c.totalPercent_current || 0).toFixed(2)}%</td>
+                  <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{(c.totalPercent_current || 0).toFixed(2)}%</td>
                   <td className="py-3 px-4 text-right">{f(c.kumk_current)}</td>
                   <td className="py-3 px-4 text-right text-green-600">{(c.kumkPercent_current || 0).toFixed(2)}%</td>
                   <td className="py-3 px-4 text-right">{f(c.kur_current)}</td>
@@ -459,7 +448,7 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Realisasi Kredit {kanwilName}</h2>
         <div className="grid grid-cols-4 gap-4">
-          <div className="border-l-4 border-green-600 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK</div>
             <div className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_real_current || 0)}</div>
             <div className="text-xs text-gray-500 mt-1">1-{monthInfo.current?.day || 26} {monthInfo.current?.shortName || 'Jan'}'26</div>
@@ -477,9 +466,9 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
             <div className="text-xs text-gray-500 mt-1">Real UMKM</div>
           </div>
 
-          <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total Realisasi</div>
-            <div className="text-2xl font-bold text-green-600">Rp {f((kanwilSummary.kumk_real_current || 0) + (kanwilSummary.kur_total_current || 0) + (kanwilSummary.umkm_real_current || 0))}</div>
+            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f((kanwilSummary.kumk_real_current || 0) + (kanwilSummary.kur_total_current || 0) + (kanwilSummary.umkm_real_current || 0))}</div>
             <div className="text-xs text-gray-500 mt-1">KUMK + KUR + UMKM</div>
           </div>
         </div>
@@ -492,7 +481,7 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
         </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
-            <thead className="sticky top-0 bg-green-600 text-white">
+            <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
@@ -554,12 +543,12 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Posisi Kredit {kanwilName}</h2>
         <div className="grid grid-cols-5 gap-3">
-          <div className="border-l-4 border-purple-600 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Posisi Awal Jan</div>
             <div className="text-xl font-bold">Rp {f(kanwilSummary.posisi_jan || 0)}</div>
           </div>
 
-          <div className="border-l-4 border-purple-500 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Realisasi</div>
             <div className="text-xl font-bold">Rp {f(kanwilSummary.realisasi || 0)}</div>
           </div>
@@ -569,14 +558,14 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
             <div className="text-xl font-bold">Rp {f(kanwilSummary.runoff || 0)}</div>
           </div>
 
-          <div className="border-l-4 border-purple-600 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Posisi Current</div>
-            <div className="text-2xl font-bold text-purple-600">Rp {f(kanwilSummary.posisi_current || 0)}</div>
+            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.posisi_current || 0)}</div>
           </div>
 
-          <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
+          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Gap YoY</div>
-            <div className="text-2xl font-bold text-purple-600">Rp {f(kanwilSummary.gap_yoy || 0)}</div>
+            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.gap_yoy || 0)}</div>
           </div>
         </div>
       </div>
@@ -588,7 +577,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
         </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
-            <thead className="sticky top-0 bg-purple-600 text-white">
+            <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
@@ -606,7 +595,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
                   <td className="py-3 px-4 text-right">{f(c.posisi_jan || 0)}</td>
                   <td className="py-3 px-4 text-right font-semibold">{f(c.posisi_current || 0)}</td>
                   <td className="py-3 px-4 text-right">{f(c.gap_mtd || 0)}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-purple-600">{f(c.gap_yoy || 0)}</td>
+                  <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(c.gap_yoy || 0)}</td>
                 </tr>
               ))}
             </tbody>

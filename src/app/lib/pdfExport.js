@@ -157,13 +157,13 @@ export function formatNPLCabangData(cabangData, kanwilName, monthInfo) {
       c.name,
       formatNumber(c.total_current || 0),
       formatPercent(c.totalPercent_current),
-      gapTotal !== 0 ? (gapTotal > 0 ? '↑ ' : '↓ ') + formatNumber(Math.abs(gapTotal)) : '-',
+      gapTotal !== 0 ? (gapTotal > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapTotal)) : '-',
       formatNumber(c.kumk_current || 0),
       formatPercent(c.kumkPercent_current),
-      gapKumk !== 0 ? (gapKumk > 0 ? '↑ ' : '↓ ') + formatNumber(Math.abs(gapKumk)) : '-',
+      gapKumk !== 0 ? (gapKumk > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapKumk)) : '-',
       formatNumber(c.kur_current || 0),
       formatPercent(c.kurPercent_current),
-      gapKur !== 0 ? (gapKur > 0 ? '↑ ' : '↓ ') + formatNumber(Math.abs(gapKur)) : '-'
+      gapKur !== 0 ? (gapKur > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapKur)) : '-'
     ]
   })
 
