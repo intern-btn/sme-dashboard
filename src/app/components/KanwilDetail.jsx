@@ -30,9 +30,9 @@ export default function KanwilDetail({
 
   const tabs = [
     { id: 'npl', label: 'NPL', color: 'blue' },
-    { id: 'kol2', label: 'KOL 2', color: 'blue' },
-    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'blue' },
-    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'blue' }
+    { id: 'kol2', label: 'KOL 2', color: 'yellow' },
+    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'green' },
+    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'purple' }
   ]
 
   const getActiveData = () => {
@@ -58,25 +58,36 @@ export default function KanwilDetail({
           <div className="flex">
             {tabs.map(tab => {
               const isActive = activeTab === tab.id
+              let bgColor = 'bg-gray-50'
+              let textColor = 'text-gray-700'
+              let borderColor = ''
 
               if (isActive) {
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex-1 px-4 py-2 font-semibold text-sm transition-all text-white border-b-4"
-                    style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
-                  >
-                    {tab.label}
-                  </button>
-                )
+                if (tab.id === 'npl') {
+                  bgColor = 'text-white'
+                  textColor = 'text-white'
+                  borderColor = 'border-b-4'
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex-1 px-4 py-2 font-semibold text-sm transition-all ${bgColor} ${textColor} ${borderColor}`}
+                      style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
+                    >
+                      {tab.label}
+                    </button>
+                  )
+                }
+                bgColor = `bg-${tab.color}-600`
+                textColor = 'text-white'
+                borderColor = 'border-b-4 border-orange-500'
               }
 
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 px-4 py-2 font-semibold text-sm transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  className={`flex-1 px-4 py-2 font-semibold text-sm transition-all ${bgColor} ${textColor} ${borderColor} hover:bg-gray-100`}
                 >
                   {tab.label}
                 </button>
@@ -577,7 +588,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
         </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
-            <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
+            <thead className="sticky top-0 bg-purple-600 text-white">
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
@@ -595,7 +606,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
                   <td className="py-3 px-4 text-right">{f(c.posisi_jan || 0)}</td>
                   <td className="py-3 px-4 text-right font-semibold">{f(c.posisi_current || 0)}</td>
                   <td className="py-3 px-4 text-right">{f(c.gap_mtd || 0)}</td>
-                  <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(c.gap_yoy || 0)}</td>
+                  <td className="py-3 px-4 text-right font-semibold text-purple-600">{f(c.gap_yoy || 0)}</td>
                 </tr>
               ))}
             </tbody>
