@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { upload } from '@vercel/blob/client'
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -11,13 +12,15 @@ export default function AdminPage() {
   const [realisasiFile, setRealisasiFile] = useState(null)
   const [realisasiKreditFile, setRealisasiKreditFile] = useState(null)
   const [posisiKreditFile, setPosisiKreditFile] = useState(null)
+  const [multiSheetFile, setMultiSheetFile] = useState(null)
+  const [uploadMode, setUploadMode] = useState('separate') // 'separate' | 'multi'
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [uploadStats, setUploadStats] = useState(null)
   const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null })
   const [history, setHistory] = useState([])
-  const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   useEffect(() => {
     // Check if already authenticated
@@ -82,7 +85,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleUpload = async () => {
+  const handleSeparateFilesUpload = async () => {
     if (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile) {
       setError('Pilih minimal 1 file Excel')
       return
@@ -92,6 +95,7 @@ export default function AdminPage() {
     setMessage('')
     setError('')
     setUploadStats(null)
+    setUploadProgress(0)
 
     try {
       const formData = new FormData()
@@ -133,6 +137,90 @@ export default function AdminPage() {
       setError(err.message)
     } finally {
       setUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  const handleMultiSheetUpload = async () => {
+    if (!multiSheetFile) {
+      setError('Pilih file Excel multi-sheet')
+      return
+    }
+
+    // Validate file size (15MB limit)
+    const maxSize = 15 * 1024 * 1024 // 15MB
+    if (multiSheetFile.size > maxSize) {
+      setError(`File terlalu besar (${(multiSheetFile.size / 1024 / 1024).toFixed(2)}MB). Maksimum 15MB`)
+      return
+    }
+
+    setUploading(true)
+    setMessage('')
+    setError('')
+    setUploadStats(null)
+    setUploadProgress(0)
+
+    try {
+      // Step 1: Upload to Vercel Blob with progress tracking
+      const blob = await upload(multiSheetFile.name, multiSheetFile, {
+        access: 'public',
+        handleUploadUrl: '/api/upload/token',
+        onUploadProgress: (progress) => {
+          const percent = Math.round((progress.loaded / progress.total) * 100)
+          setUploadProgress(percent)
+        }
+      })
+
+      console.log('Uploaded to blob:', blob.url)
+
+      // Step 2: Process the multi-sheet Excel
+      const processResponse = await fetch('/api/upload/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blobUrl: blob.url })
+      })
+
+      const result = await processResponse.json()
+
+      if (!processResponse.ok) {
+        throw new Error(result.error || result.details || 'Processing failed')
+      }
+
+      // Show success message with parsed sheets info
+      let successMsg = 'File berhasil diupload dan diproses!'
+      if (result.parsedSheets && result.parsedSheets.length > 0) {
+        successMsg += ` (${result.parsedSheets.join(', ')})`
+      }
+      if (result.missingSheets && result.missingSheets.length > 0) {
+        successMsg += ` | Sheet tidak ditemukan: ${result.missingSheets.join(', ')}`
+      }
+
+      setMessage(successMsg)
+      setUploadStats(result.stats)
+      setMultiSheetFile(null)
+
+      document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.value = ''
+      })
+
+      setTimeout(() => {
+        fetchCurrentStatus()
+        fetchHistory()
+      }, 1000)
+
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  const handleUpload = async () => {
+    if (uploadMode === 'multi') {
+      await handleMultiSheetUpload()
+    } else {
+      await handleSeparateFilesUpload()
     }
   }
 
@@ -240,7 +328,35 @@ export default function AdminPage() {
           <div className="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Data</h2>
 
-            <div className="space-y-4">
+            {/* Mode Toggle */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Mode</label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setUploadMode('separate')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+                    uploadMode === 'separate'
+                      ? 'bg-blue-900 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Separate Files (5 files)
+                </button>
+                <button
+                  onClick={() => setUploadMode('multi')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+                    uploadMode === 'multi'
+                      ? 'bg-blue-900 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Multi-Sheet (1 file, max 15MB)
+                </button>
+              </div>
+            </div>
+
+            {uploadMode === 'separate' ? (
+              <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   1. NPL SME (.xlsx)
@@ -306,17 +422,68 @@ export default function AdminPage() {
                 {posisiKreditFile && <p className="mt-1 text-sm text-green-600">{posisiKreditFile.name}</p>}
               </div>
             </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-900">
+                    <strong>Multi-Sheet Excel:</strong> Upload satu file Excel yang berisi 5 sheet dengan awalan:
+                  </p>
+                  <ul className="text-xs text-blue-800 mt-2 ml-4 space-y-1">
+                    <li>• <strong>22a</strong> - Realisasi Harian</li>
+                    <li>• <strong>44a1</strong> - Realisasi Kredit</li>
+                    <li>• <strong>44b</strong> - Posisi Kredit</li>
+                    <li>• <strong>49b</strong> - KOL 2</li>
+                    <li>• <strong>49c</strong> - NPL</li>
+                  </ul>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Multi-Sheet Excel File (.xlsx, max 15MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setMultiSheetFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {multiSheetFile && (
+                    <div className="mt-2">
+                      <p className="text-sm text-green-600">{multiSheetFile.name}</p>
+                      <p className="text-xs text-gray-500">
+                        Size: {(multiSheetFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Progress Bar */}
+            {uploading && uploadProgress > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Upload Progress</span>
+                  <span className="text-sm font-medium text-blue-900">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-900 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleUpload}
-              disabled={uploading || (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile)}
+              disabled={uploading || (uploadMode === 'multi' ? !multiSheetFile : (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile))}
               className={`mt-6 w-full py-3 rounded-lg font-semibold text-white transition-colors ${
-                uploading || (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile)
+                uploading || (uploadMode === 'multi' ? !multiSheetFile : (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile))
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-900 hover:bg-blue-800'
               }`}
             >
-              {uploading ? 'Processing...' : 'Upload & Process'}
+              {uploading ? (uploadProgress > 0 ? `Uploading ${uploadProgress}%...` : 'Processing...') : 'Upload & Process'}
             </button>
 
             {message && (
