@@ -2,6 +2,14 @@
 import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { getMonthInfo, formatDateID } from '../lib/dateUtils'
+import ExportButton from './ExportButton'
+import {
+  exportTableToPDF,
+  formatNPLKanwilData,
+  formatKOL2KanwilData,
+  formatRealisasiKreditKanwilData,
+  formatPosisiKreditKanwilData
+} from '../lib/pdfExport'
 
 export default function Dashboard({
   nplData,
@@ -123,6 +131,14 @@ function NPLContent({ data, metadata }) {
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportNPL = () => {
+    if (!kanwilData || kanwilData.length === 0) {
+      throw new Error('Tidak ada data untuk diekspor')
+    }
+    const pdfData = formatNPLKanwilData(kanwilData, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       {totalNasional && (
@@ -150,8 +166,9 @@ function NPLContent({ data, metadata }) {
 
       {kanwilData && kanwilData.length > 0 && (
         <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>NPL PER KANWIL</h2>
+            <ExportButton onClick={handleExportNPL} label="Export PDF" />
           </div>
           <div className="overflow-auto">
             <table className="w-full">
@@ -202,6 +219,14 @@ function KOL2Content({ data, metadata }) {
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportKOL2 = () => {
+    if (!kanwilData || kanwilData.length === 0) {
+      throw new Error('Tidak ada data untuk diekspor')
+    }
+    const pdfData = formatKOL2KanwilData(kanwilData, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       {totalNasional && (
@@ -229,8 +254,9 @@ function KOL2Content({ data, metadata }) {
 
       {kanwilData && kanwilData.length > 0 && (
         <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>KOL 2 PER KANWIL</h2>
+            <ExportButton onClick={handleExportKOL2} label="Export PDF" />
           </div>
           <div className="overflow-auto">
             <table className="w-full">
@@ -281,6 +307,14 @@ function RealisasiKreditContent({ data, metadata }) {
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportRealisasiKredit = () => {
+    if (!kanwilData || kanwilData.length === 0) {
+      throw new Error('Tidak ada data untuk diekspor')
+    }
+    const pdfData = formatRealisasiKreditKanwilData(kanwilData, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       {totalNasional && (
@@ -313,8 +347,9 @@ function RealisasiKreditContent({ data, metadata }) {
 
       {kanwilData && kanwilData.length > 0 && (
         <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>REALISASI KREDIT PER KANWIL</h2>
+            <ExportButton onClick={handleExportRealisasiKredit} label="Export PDF" />
           </div>
           <div className="overflow-auto">
             <table className="w-full">
@@ -368,6 +403,14 @@ function PosisiKreditContent({ data, metadata }) {
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportPosisiKredit = () => {
+    if (!kanwilData || kanwilData.length === 0) {
+      throw new Error('Tidak ada data untuk diekspor')
+    }
+    const pdfData = formatPosisiKreditKanwilData(kanwilData, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       {totalNasional && (
@@ -396,8 +439,9 @@ function PosisiKreditContent({ data, metadata }) {
 
       {kanwilData && kanwilData.length > 0 && (
         <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>POSISI KREDIT PER KANWIL</h2>
+            <ExportButton onClick={handleExportPosisiKredit} label="Export PDF" />
           </div>
           <div className="overflow-auto">
             <table className="w-full">

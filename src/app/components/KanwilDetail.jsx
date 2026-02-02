@@ -2,6 +2,14 @@
 import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { getMonthInfo, formatDateID } from '../lib/dateUtils'
+import ExportButton from './ExportButton'
+import {
+  exportTableToPDF,
+  formatNPLCabangData,
+  formatKOL2CabangData,
+  formatRealisasiKreditCabangData,
+  formatPosisiKreditCabangData
+} from '../lib/pdfExport'
 
 const KANWIL_NAMES = ['Jakarta I', 'Jakarta II', 'Jateng DIY', 'Jabanus', 'Jawa Barat', 'Kalimantan', 'Sulampua', 'Sumatera 1', 'Sumatera 2']
 
@@ -111,6 +119,14 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
   const kanwilSummary = data.kanwilData.find(k => k.name === kanwilName) || {}
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.total_current || 0) - (a.total_current || 0))
+
+  const handleExportNPLCabang = () => {
+    if (!cabangList || cabangList.length === 0) {
+      throw new Error('Tidak ada data cabang untuk diekspor')
+    }
+    const pdfData = formatNPLCabangData(cabangList, kanwilName, monthInfo)
+    exportTableToPDF(pdfData)
+  }
 
   const comparisonData = [
     {
@@ -245,7 +261,10 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
 
       {/* Cabang Table */}
       <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b" style={{ backgroundColor: '#f8f9fa' }}><h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail NPL Per Cabang ({sortedCabang.length})</h2></div>
+        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
+          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail NPL Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExportNPLCabang} label="Export PDF" />
+        </div>
         <div className="overflow-auto max-h-[400px]">
           <table className="w-full">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
@@ -317,6 +336,14 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
   const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
   const previousDateLabel = previousMonth?.shortLabel || formatDateID(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'short')
 
+  const handleExportKOL2Cabang = () => {
+    if (!cabangList || cabangList.length === 0) {
+      throw new Error('Tidak ada data cabang untuk diekspor')
+    }
+    const pdfData = formatKOL2CabangData(cabangList, kanwilName, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       <div className="mb-6">
@@ -367,7 +394,10 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
       </div>
 
       <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b" style={{ backgroundColor: '#f8f9fa' }}><h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail KOL 2 Per Cabang ({sortedCabang.length})</h2></div>
+        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
+          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail KOL 2 Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExportKOL2Cabang} label="Export PDF" />
+        </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
             <thead className="sticky top-0 bg-yellow-600 text-white">
@@ -416,6 +446,14 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
 
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportRealisasiKreditCabang = () => {
+    if (!cabangList || cabangList.length === 0) {
+      throw new Error('Tidak ada data cabang untuk diekspor')
+    }
+    const pdfData = formatRealisasiKreditCabangData(cabangList, kanwilName, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       <div className="mb-6">
@@ -448,7 +486,10 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
       </div>
 
       <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b" style={{ backgroundColor: '#f8f9fa' }}><h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Realisasi Kredit Per Cabang ({sortedCabang.length})</h2></div>
+        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
+          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Realisasi Kredit Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExportRealisasiKreditCabang} label="Export PDF" />
+        </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
             <thead className="sticky top-0 bg-green-600 text-white">
@@ -500,6 +541,14 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
 
   const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 
+  const handleExportPosisiKreditCabang = () => {
+    if (!cabangList || cabangList.length === 0) {
+      throw new Error('Tidak ada data cabang untuk diekspor')
+    }
+    const pdfData = formatPosisiKreditCabangData(cabangList, kanwilName, monthInfo)
+    exportTableToPDF(pdfData)
+  }
+
   return (
     <>
       <div className="mb-6">
@@ -533,7 +582,10 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
       </div>
 
       <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b" style={{ backgroundColor: '#f8f9fa' }}><h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Posisi Kredit Per Cabang ({sortedCabang.length})</h2></div>
+        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
+          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Posisi Kredit Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExportPosisiKreditCabang} label="Export PDF" />
+        </div>
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full">
             <thead className="sticky top-0 bg-purple-600 text-white">

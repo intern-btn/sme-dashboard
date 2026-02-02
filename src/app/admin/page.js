@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [uploadStats, setUploadStats] = useState(null)
   const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null })
   const [history, setHistory] = useState([])
+  const [uploadProgress, setUploadProgress] = useState('')
 
   useEffect(() => {
     // Check if already authenticated
@@ -150,12 +151,16 @@ export default function AdminPage() {
   // Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8">
-        <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="text-5xl mb-4">🔐</div>
-            <h1 className="text-2xl font-bold text-gray-800">Admin Portal</h1>
-            <p className="text-gray-600 mt-2">SME Dashboard</p>
+            <div className="mx-auto w-16 h-16 bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
+            <p className="text-gray-600 mt-2 text-sm">SME Dashboard Management</p>
           </div>
 
           <form onSubmit={handleLogin}>
@@ -167,8 +172,8 @@ export default function AdminPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Masukkan password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                placeholder="Enter password"
                 autoFocus
               />
             </div>
@@ -181,14 +186,14 @@ export default function AdminPage() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="w-full py-3 bg-blue-900 text-white rounded-lg font-semibold hover:bg-blue-800 transition-colors"
             >
               Login
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-500">
-            <a href="/" className="text-blue-600 hover:underline">← Kembali ke Dashboard</a>
+            <a href="/" className="text-blue-900 hover:underline font-medium">← Return to Dashboard</a>
           </div>
         </div>
       </div>
@@ -197,28 +202,32 @@ export default function AdminPage() {
 
   // Admin Dashboard
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="text-4xl">📊</div>
+              <div className="w-12 h-12 bg-blue-900 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Admin Portal</h1>
-                <p className="text-gray-600">SME Dashboard - Upload Data</p>
+                <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
+                <p className="text-gray-600 text-sm">SME Dashboard Data Management</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <a
                 href="/"
-                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="px-4 py-2 text-blue-900 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm border border-blue-900"
               >
                 View Dashboard
               </a>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium text-sm border border-gray-300"
               >
                 Logout
               </button>
@@ -228,8 +237,8 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-3 gap-6">
           {/* Upload Form */}
-          <div className="col-span-2 bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Upload Data Baru</h2>
+          <div className="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Data</h2>
 
             <div className="space-y-4">
               <div>
@@ -304,7 +313,7 @@ export default function AdminPage() {
               className={`mt-6 w-full py-3 rounded-lg font-semibold text-white transition-colors ${
                 uploading || (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile)
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-900 hover:bg-blue-800'
               }`}
             >
               {uploading ? 'Processing...' : 'Upload & Process'}
@@ -333,42 +342,42 @@ export default function AdminPage() {
           </div>
 
           {/* Current Status */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Data Saat Ini</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Data Status</h2>
 
-            <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">NPL</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {currentData.npl ? formatDate(currentData.npl.uploadDate) : 'Belum ada data'}
+            <div className="space-y-3">
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">NPL</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.npl ? formatDate(currentData.npl.uploadDate) : 'No data'}
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">KOL 2</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {currentData.kol2 ? formatDate(currentData.kol2.uploadDate) : 'Belum ada data'}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">KOL 2</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.kol2 ? formatDate(currentData.kol2.uploadDate) : 'No data'}
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Realisasi Harian</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {currentData.realisasi ? formatDate(currentData.realisasi.uploadDate) : 'Belum ada data'}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">Realisasi Harian</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.realisasi ? formatDate(currentData.realisasi.uploadDate) : 'No data'}
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Realisasi Kredit</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {currentData.realisasi_kredit ? formatDate(currentData.realisasi_kredit.uploadDate) : 'Belum ada data'}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">Realisasi Kredit</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.realisasi_kredit ? formatDate(currentData.realisasi_kredit.uploadDate) : 'No data'}
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Posisi Kredit</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {currentData.posisi_kredit ? formatDate(currentData.posisi_kredit.uploadDate) : 'Belum ada data'}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">Posisi Kredit</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.posisi_kredit ? formatDate(currentData.posisi_kredit.uploadDate) : 'No data'}
                 </div>
               </div>
             </div>
@@ -377,23 +386,23 @@ export default function AdminPage() {
 
         {/* History */}
         {history.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Riwayat Upload</h2>
+          <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload History</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-3">Tanggal Upload</th>
-                    <th className="text-left py-2 px-3">Periode Data</th>
-                    <th className="text-left py-2 px-3">Files</th>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Upload Date</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Data Period</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Files</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {history.slice(0, 10).map((item, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="py-2 px-3">{formatDate(item.uploadDate)}</td>
-                      <td className="py-2 px-3">{item.monthInfo?.current?.fullLabel || '-'}</td>
-                      <td className="py-2 px-3 text-gray-500">{item.files?.join(', ') || '-'}</td>
+                  {history.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 text-gray-900 font-medium">{formatDate(item.uploadDate)}</td>
+                      <td className="py-3 px-4 text-gray-700">{item.monthInfo?.current?.fullLabel || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600 text-xs">{item.files?.join(', ') || '-'}</td>
                     </tr>
                   ))}
                 </tbody>

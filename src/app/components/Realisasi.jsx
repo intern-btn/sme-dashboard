@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { getMonthInfo } from '../lib/dateUtils'
+import ExportButton from './ExportButton'
+import { exportTableToPDF, formatRealisasiDailyData } from '../lib/pdfExport'
 
 export default function Realisasi({ data }) {
   const [activeView, setActiveView] = useState('total')
@@ -47,6 +49,14 @@ export default function Realisasi({ data }) {
 
   // Calculate growth
   const growth = previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal * 100) : 0
+
+  const handleExportRealisasiHarian = () => {
+    if (!dailyData || dailyData.length === 0) {
+      throw new Error('Tidak ada data untuk diekspor')
+    }
+    const pdfData = formatRealisasiDailyData(dailyData, monthInfo)
+    exportTableToPDF(pdfData)
+  }
 
   return (
     <div className="min-h-screen p-8 fade-in bg-white">
@@ -311,10 +321,11 @@ export default function Realisasi({ data }) {
 
       {/* Daily Table */}
       <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-gray-300" style={{ backgroundColor: '#f8f9fa' }}>
+        <div className="p-5 border-b border-gray-300 flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
           <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
             Realisasi Per Hari - {currentMonth?.fullLabel || 'Bulan Ini'}
           </h2>
+          <ExportButton onClick={handleExportRealisasiHarian} label="Export PDF" />
         </div>
 
         <div className="overflow-auto max-h-[400px] custom-scrollbar">

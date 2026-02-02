@@ -70,6 +70,7 @@ export async function POST(request) {
 
     const uploadDate = new Date().toISOString()
     const datePrefix = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const uploadId = Date.now().toString() // Unique timestamp ID
 
     // Parse Excel files (only if uploaded)
     let nplData, kol2Data, realisasiData, realisasiKreditData, posisiKreditData
@@ -104,7 +105,7 @@ export async function POST(request) {
       posisiKreditData = parsePosisiKreditExcel(posisiKreditWorkbook)
     }
 
-    const monthInfo = nplData?.monthInfo || realisasiData?.monthInfo || realisasiKreditData?.monthInfo
+    const monthInfo = nplData?.monthInfo || kol2Data?.monthInfo || realisasiData?.monthInfo || realisasiKreditData?.monthInfo || posisiKreditData?.monthInfo
 
     try {
       // Upload LATEST versions (for dashboard display)
@@ -194,44 +195,44 @@ export async function POST(request) {
         })
       }
 
-      // Upload HISTORICAL versions (with date prefix)
+      // Upload HISTORICAL versions (with unique upload ID to prevent overwriting same-day uploads)
       if (nplData) {
-        await put(`history/${datePrefix}_npl.json`, JSON.stringify(nplData), {
+        await put(`history/${uploadId}_npl.json`, JSON.stringify(nplData), {
           access: 'public',
           addRandomSuffix: false,
-          allowOverwrite: true
+          allowOverwrite: false
         })
       }
 
       if (kol2Data) {
-        await put(`history/${datePrefix}_kol2.json`, JSON.stringify(kol2Data), {
+        await put(`history/${uploadId}_kol2.json`, JSON.stringify(kol2Data), {
           access: 'public',
           addRandomSuffix: false,
-          allowOverwrite: true
+          allowOverwrite: false
         })
       }
 
       if (realisasiData) {
-        await put(`history/${datePrefix}_realisasi.json`, JSON.stringify(realisasiData), {
+        await put(`history/${uploadId}_realisasi.json`, JSON.stringify(realisasiData), {
           access: 'public',
           addRandomSuffix: false,
-          allowOverwrite: true
+          allowOverwrite: false
         })
       }
 
       if (realisasiKreditData) {
-        await put(`history/${datePrefix}_realisasi_kredit.json`, JSON.stringify(realisasiKreditData), {
+        await put(`history/${uploadId}_realisasi_kredit.json`, JSON.stringify(realisasiKreditData), {
           access: 'public',
           addRandomSuffix: false,
-          allowOverwrite: true
+          allowOverwrite: false
         })
       }
 
       if (posisiKreditData) {
-        await put(`history/${datePrefix}_posisi_kredit.json`, JSON.stringify(posisiKreditData), {
+        await put(`history/${uploadId}_posisi_kredit.json`, JSON.stringify(posisiKreditData), {
           access: 'public',
           addRandomSuffix: false,
-          allowOverwrite: true
+          allowOverwrite: false
         })
       }
 
@@ -243,11 +244,12 @@ export async function POST(request) {
       if (realisasiKreditFile) uploadedFiles.push(realisasiKreditFile.name)
       if (posisiKreditFile) uploadedFiles.push(posisiKreditFile.name)
 
-      await put(`history/${datePrefix}_meta.json`, JSON.stringify({
+      await put(`history/${uploadId}_meta.json`, JSON.stringify({
+        uploadId,
         uploadDate,
         monthInfo,
         files: uploadedFiles
-      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
+      }), { access: 'public', addRandomSuffix: false, allowOverwrite: false })
 
       // Update consolidated history index
       let historyIndex = { entries: [] }
@@ -263,20 +265,20 @@ export async function POST(request) {
         }
       }
 
-      // Add new entry (or update if same date exists)
-      const existingEntryIndex = historyIndex.entries.findIndex(e => e.datePrefix === datePrefix)
+      // Always add new entry (never overwrite - each upload is unique)
       const newEntry = {
-        datePrefix,
+        uploadId,
         uploadDate,
         monthInfo,
         files: uploadedFiles
       }
 
-      if (existingEntryIndex >= 0) {
-        historyIndex.entries[existingEntryIndex] = newEntry
-      } else {
-        historyIndex.entries.push(newEntry)
-      }
+      historyIndex.entries.push(newEntry)
+
+      // Keep only the last 100 entries to prevent the index from growing indefinitely
+      historyIndex.entries = historyIndex.entries
+        .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate))
+        .slice(0, 100)
 
       await put('history_index.json', JSON.stringify(historyIndex), {
         access: 'public',
