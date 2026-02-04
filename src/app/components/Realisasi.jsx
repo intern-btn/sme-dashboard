@@ -59,19 +59,19 @@ export default function Realisasi({ data }) {
   }
 
   return (
-    <div className="min-h-screen p-8 fade-in bg-white">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 fade-in bg-white">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 uppercase" style={{ color: '#003d7a' }}>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 uppercase" style={{ color: '#003d7a' }}>
           REALISASI KREDIT SME HARIAN
         </h1>
-        <p className="text-gray-600 text-lg">
+        <p className="text-gray-600 text-sm sm:text-base lg:text-lg">
           Perbandingan s.d. tanggal {maxDay} {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
         </p>
       </div>
 
       {/* Monthly Summary */}
-      <div className="grid grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
         <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
           <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
           <div className="text-3xl font-bold text-gray-900">
@@ -111,10 +111,10 @@ export default function Realisasi({ data }) {
           </h2>
 
           {/* Tabs */}
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg overflow-x-auto">
             <button
               onClick={() => setActiveView('total')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeView === 'total'
                   ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
@@ -125,7 +125,7 @@ export default function Realisasi({ data }) {
             </button>
             <button
               onClick={() => setActiveView('kur')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeView === 'kur'
                   ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
@@ -136,7 +136,7 @@ export default function Realisasi({ data }) {
             </button>
             <button
               onClick={() => setActiveView('kumk')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeView === 'kumk'
                   ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
@@ -147,7 +147,7 @@ export default function Realisasi({ data }) {
             </button>
             <button
               onClick={() => setActiveView('kppSupply')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeView === 'kppSupply'
                   ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
@@ -158,7 +158,7 @@ export default function Realisasi({ data }) {
             </button>
             <button
               onClick={() => setActiveView('kppDemand')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeView === 'kppDemand'
                   ? 'text-white'
                   : 'text-gray-600 hover:text-gray-900'
@@ -170,7 +170,7 @@ export default function Realisasi({ data }) {
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={350}>
+        <ResponsiveContainer width="100%" height={300}>
           <LineChart
             data={comparisonData}
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
@@ -328,8 +328,8 @@ export default function Realisasi({ data }) {
           <ExportButton onClick={handleExportRealisasiHarian} label="Export PDF" />
         </div>
 
-        <div className="overflow-auto max-h-[400px] custom-scrollbar">
-          <table className="w-full">
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px] custom-scrollbar">
+          <table className="w-full min-w-[800px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-left text-sm">
                 <th className="py-3 px-4 font-semibold">Tanggal</th>

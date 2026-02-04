@@ -1,10 +1,16 @@
 import { handleUpload } from '@vercel/blob/client'
 import { NextResponse } from 'next/server'
+import { requireAuth } from '../../../../lib/auth.js'
 
 export const runtime = 'edge'
 
 export async function POST(request) {
   try {
+    const authenticated = await requireAuth(request)
+    if (!authenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     const jsonResponse = await handleUpload({

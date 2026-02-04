@@ -12,7 +12,7 @@ export default function KOL2Dashboard({ data, metadata }) {
   // Get month info from data or metadata, fallback to current date
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
 
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const formatDate = (dateString) => {
     if (!dateString) return ''
@@ -24,7 +24,6 @@ export default function KOL2Dashboard({ data, metadata }) {
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-16 object-contain" />
-          <img src="https://putrawijayakusumasakti.co.id/images/logo/danantara.webp" alt="Danantara" className="h-16 object-contain" />
         </div>
         <div className="text-right">
           <h1 className="text-4xl font-bold text-orange-600 mb-1">KOL 2 KREDIT UMKM DASHBOARD</h1>
@@ -38,7 +37,7 @@ export default function KOL2Dashboard({ data, metadata }) {
       {totalNasional && (
         <div className="bg-white border-2 border-orange-600 rounded-xl p-6 mb-6 shadow-md">
           <h2 className="text-xl font-semibold mb-4 text-orange-600">🎯 TOTAL NASIONAL KOL 2 - {monthInfo.current.fullLabel}</h2>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-5">
               <div className="text-gray-600 text-sm mb-1 font-medium">Total KOL 2</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
@@ -61,7 +60,7 @@ export default function KOL2Dashboard({ data, metadata }) {
       {kanwilData && kanwilData.length > 0 && (
         <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-md">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">📊 TREND KOL 2 PER KANWIL</h2>
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={300}>
             <LineChart data={kanwilData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="name" stroke="#6B7280" angle={-45} textAnchor="end" height={100} style={{ fontSize: '11px' }} />

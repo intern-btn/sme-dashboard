@@ -8,12 +8,18 @@ import {
   parseRealisasiKreditExcel,
   parsePosisiKreditExcel
 } from '../../../../lib/excel-parsers.js'
+import { requireAuth } from '../../../../lib/auth.js'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request) {
   try {
+    const authenticated = await requireAuth(request)
+    if (!authenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json({ error: 'Blob storage not configured' }, { status: 500 })
     }

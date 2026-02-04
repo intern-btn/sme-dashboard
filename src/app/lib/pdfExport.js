@@ -3,10 +3,56 @@ import autoTable from 'jspdf-autotable'
 
 const BTN_BLUE = '#003d7a'
 const BTN_ORANGE = '#e84e0f'
+const COLOR_RED = [220, 38, 38]      // Red for decrease/bad
+const COLOR_GREEN = [34, 197, 94]    // Green for increase/good
+const COLOR_NEUTRAL = [75, 85, 99]   // Gray for neutral
 
 // Format number to Indonesian locale
 const formatNumber = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
 const formatPercent = (n) => `${(n || 0).toFixed(2)}%`
+
+/**
+ * Helper to create styled cell object for jspdf-autotable
+ * @param {string|number} content - Cell content
+ * @param {object} styles - Cell styles (textColor, fontStyle, etc)
+ * @returns {object} Cell object with content and styles
+ */
+const styledCell = (content, styles = {}) => ({
+  content: String(content),
+  styles: styles
+})
+
+/**
+ * Get color styling for gap values.
+ * Red only for negative values, green only for positive values.
+ * @param {number} gapValue - The gap value
+ * @returns {object} Style object for cell
+ */
+const getGapStyle = (gapValue) => {
+  if (!gapValue || gapValue === 0) {
+    return { textColor: COLOR_NEUTRAL, fontStyle: 'normal' }
+  }
+
+  return gapValue < 0
+    ? { textColor: COLOR_RED, fontStyle: 'bold' }
+    : { textColor: COLOR_GREEN, fontStyle: 'bold' }
+}
+
+/**
+ * Get color styling for percentage performance.
+ * Red only for negative values, green only for positive values.
+ * @param {number} percent - Performance percentage
+ * @returns {object} Style object for cell
+ */
+const getPerformanceStyle = (percent) => {
+  const value = percent || 0
+  if (value === 0) {
+    return { textColor: COLOR_NEUTRAL, fontStyle: 'normal' }
+  }
+  return value < 0
+    ? { textColor: COLOR_RED, fontStyle: 'bold' }
+    : { textColor: COLOR_GREEN, fontStyle: 'bold' }
+}
 
 // Generate timestamp for export
 const getTimestamp = () => {
@@ -83,6 +129,13 @@ export function exportTableToPDF({
     },
     columnStyles: columnStyles,
     margin: { top: 30, left: 10, right: 10 },
+    didParseCell: function (hookData) {
+      // Apply custom styles if cell is an object with styles property
+      if (hookData.cell.raw && typeof hookData.cell.raw === 'object' && hookData.cell.raw.styles) {
+        Object.assign(hookData.cell.styles, hookData.cell.raw.styles)
+        hookData.cell.text = hookData.cell.raw.content
+      }
+    },
     didDrawPage: function (data) {
       // Footer on each page
       const pageCount = doc.internal.getNumberOfPages()
@@ -115,11 +168,11 @@ export function formatNPLKanwilData(kanwilData, monthInfo) {
     i + 1,
     k.name,
     formatNumber(k.kumk_current || 0),
-    formatPercent(k.kumkPercent_current),
+    styledCell(formatPercent(k.kumkPercent_current), getPerformanceStyle(k.kumkPercent_current, 3)),
     formatNumber(k.kur_current || 0),
-    formatPercent(k.kurPercent_current),
+    styledCell(formatPercent(k.kurPercent_current), getPerformanceStyle(k.kurPercent_current, 3)),
     formatNumber(k.total_current || 0),
-    formatPercent(k.totalPercent_current)
+    styledCell(formatPercent(k.totalPercent_current), getPerformanceStyle(k.totalPercent_current, 3))
   ])
 
   const period = monthInfo?.current?.fullLabel || 'Current'
@@ -152,18 +205,24 @@ export function formatNPLCabangData(cabangData, kanwilName, monthInfo) {
     const gapKumk = c.gap_kumk || 0
     const gapKur = c.gap_kur || 0
 
+    // Format gap text with +/- indicator
+    const formatGapText = (gap) => {
+      if (!gap || gap === 0) return '-'
+      return (gap > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gap))
+    }
+
     return [
       i + 1,
       c.name,
       formatNumber(c.total_current || 0),
       formatPercent(c.totalPercent_current),
-      gapTotal !== 0 ? (gapTotal > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapTotal)) : '-',
+      styledCell(formatGapText(gapTotal), getGapStyle(gapTotal, true)),
       formatNumber(c.kumk_current || 0),
       formatPercent(c.kumkPercent_current),
-      gapKumk !== 0 ? (gapKumk > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapKumk)) : '-',
+      styledCell(formatGapText(gapKumk), getGapStyle(gapKumk, true)),
       formatNumber(c.kur_current || 0),
       formatPercent(c.kurPercent_current),
-      gapKur !== 0 ? (gapKur > 0 ? '+ ' : '- ') + formatNumber(Math.abs(gapKur)) : '-'
+      styledCell(formatGapText(gapKur), getGapStyle(gapKur, true))
     ]
   })
 
@@ -201,11 +260,11 @@ export function formatKOL2KanwilData(kanwilData, monthInfo) {
     i + 1,
     k.name,
     formatNumber(k.kumk_current || 0),
-    formatPercent(k.kumkPercent_current),
+    styledCell(formatPercent(k.kumkPercent_current), getPerformanceStyle(k.kumkPercent_current, 3)),
     formatNumber(k.kur_current || 0),
-    formatPercent(k.kurPercent_current),
+    styledCell(formatPercent(k.kurPercent_current), getPerformanceStyle(k.kurPercent_current, 3)),
     formatNumber(k.total_current || 0),
-    formatPercent(k.totalPercent_current)
+    styledCell(formatPercent(k.totalPercent_current), getPerformanceStyle(k.totalPercent_current, 3))
   ])
 
   const period = monthInfo?.current?.fullLabel || 'Current'
@@ -237,11 +296,11 @@ export function formatKOL2CabangData(cabangData, kanwilName, monthInfo) {
     i + 1,
     c.name,
     formatNumber(c.total_current || 0),
-    formatPercent(c.totalPercent_current),
+    styledCell(formatPercent(c.totalPercent_current), getPerformanceStyle(c.totalPercent_current, 3)),
     formatNumber(c.kumk_current || 0),
-    formatPercent(c.kumkPercent_current),
+    styledCell(formatPercent(c.kumkPercent_current), getPerformanceStyle(c.kumkPercent_current, 3)),
     formatNumber(c.kur_current || 0),
-    formatPercent(c.kurPercent_current)
+    styledCell(formatPercent(c.kurPercent_current), getPerformanceStyle(c.kurPercent_current, 3))
   ])
 
   const period = monthInfo?.current?.fullLabel || 'Current'
@@ -282,7 +341,7 @@ export function formatRealisasiKreditKanwilData(kanwilData, monthInfo) {
       formatNumber(k.kur_total_current || 0),
       formatNumber(k.umkm_real_current || 0),
       formatNumber(totalRealisasi),
-      `${avgPcpRkap.toFixed(1)}%`
+      styledCell(`${avgPcpRkap.toFixed(1)}%`, getPerformanceStyle(avgPcpRkap, 90))
     ]
   })
 
@@ -321,7 +380,7 @@ export function formatRealisasiKreditCabangData(cabangData, kanwilName, monthInf
       formatNumber(c.kur_total_current || 0),
       formatNumber(c.umkm_real_current || 0),
       formatNumber(totalRealisasi),
-      formatNumber(totalGap)
+      styledCell(formatNumber(totalGap), getGapStyle(totalGap, false))
     ]
   })
 
@@ -358,8 +417,8 @@ export function formatPosisiKreditKanwilData(kanwilData, monthInfo) {
     formatNumber(k.realisasi || 0),
     formatNumber(k.runoff || 0),
     formatNumber(k.posisi_current || 0),
-    formatNumber(k.gap_mtd || 0),
-    formatNumber(k.gap_yoy || 0)
+    styledCell(formatNumber(k.gap_mtd || 0), getGapStyle(k.gap_mtd, false)),
+    styledCell(formatNumber(k.gap_yoy || 0), getGapStyle(k.gap_yoy, false))
   ])
 
   const period = monthInfo?.current?.fullLabel || 'Current'
@@ -392,8 +451,8 @@ export function formatPosisiKreditCabangData(cabangData, kanwilName, monthInfo) 
     c.name,
     formatNumber(c.posisi_jan || 0),
     formatNumber(c.posisi_current || 0),
-    formatNumber(c.gap_mtd || 0),
-    formatNumber(c.gap_yoy || 0)
+    styledCell(formatNumber(c.gap_mtd || 0), getGapStyle(c.gap_mtd, false)),
+    styledCell(formatNumber(c.gap_yoy || 0), getGapStyle(c.gap_yoy, false))
   ])
 
   const period = monthInfo?.current?.fullLabel || 'Current'

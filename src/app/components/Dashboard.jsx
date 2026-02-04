@@ -48,15 +48,15 @@ export default function Dashboard({
   }
 
   return (
-    <div className="min-h-screen p-8 fade-in bg-white">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 fade-in bg-white">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-16 object-contain" />
-          <img src="https://putrawijayakusumasakti.co.id/images/logo/danantara.webp" alt="Danantara" className="h-16 object-contain" />
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-8 sm:h-10 lg:h-12 object-contain" />
+          <img src="https://putrawijayakusumasakti.co.id/images/logo/danantara.webp" alt="Danantara" className="h-8 sm:h-10 lg:h-12 object-contain" />
         </div>
-        <div className="text-right">
-          <h1 className="text-4xl font-bold mb-1" style={{ color: '#003d7a' }}>SME KREDIT UMKM DASHBOARD</h1>
+        <div className="text-center sm:text-right">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1" style={{ color: '#003d7a' }}>SME KREDIT UMKM DASHBOARD</h1>
           <div className="flex items-center justify-end gap-6 text-gray-600 text-sm">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,8 +70,8 @@ export default function Dashboard({
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 bg-white border border-gray-300 rounded-lg shadow-sm">
-        <div className="flex">
+      <div className="mb-6 bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+        <div className="flex overflow-x-auto">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id
 
@@ -80,7 +80,7 @@ export default function Dashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 px-6 py-3 font-semibold transition-all text-white border-b-4"
+                  className="flex-1 min-w-[120px] px-4 sm:px-6 py-3 font-semibold text-sm sm:text-base transition-all text-white border-b-4 whitespace-nowrap"
                   style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
                 >
                   {tab.label}
@@ -92,7 +92,7 @@ export default function Dashboard({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="flex-1 px-6 py-3 font-semibold transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                className="flex-1 min-w-[120px] px-4 sm:px-6 py-3 font-semibold text-sm sm:text-base transition-all bg-gray-50 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
               >
                 {tab.label}
               </button>
@@ -118,7 +118,7 @@ function NPLContent({ data, metadata }) {
 
   const { totalNasional, kanwilData, monthInfo: dataMonthInfo } = data
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportNPL = () => {
     if (!kanwilData || kanwilData.length === 0) {
@@ -133,7 +133,7 @@ function NPLContent({ data, metadata }) {
       {totalNasional && (
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL NPL - {monthInfo.current.fullLabel}</h2>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total NPL</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
@@ -159,8 +159,8 @@ function NPLContent({ data, metadata }) {
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>NPL PER KANWIL</h2>
             <ExportButton onClick={handleExportNPL} label="Export PDF" />
           </div>
-          <div className="overflow-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -206,7 +206,7 @@ function KOL2Content({ data, metadata }) {
 
   const { totalNasional, kanwilData, monthInfo: dataMonthInfo } = data
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportKOL2 = () => {
     if (!kanwilData || kanwilData.length === 0) {
@@ -221,7 +221,7 @@ function KOL2Content({ data, metadata }) {
       {totalNasional && (
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL KOL 2 - {monthInfo.current.fullLabel}</h2>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total KOL 2</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
@@ -247,8 +247,8 @@ function KOL2Content({ data, metadata }) {
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>KOL 2 PER KANWIL</h2>
             <ExportButton onClick={handleExportKOL2} label="Export PDF" />
           </div>
-          <div className="overflow-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -294,7 +294,7 @@ function RealisasiKreditContent({ data, metadata }) {
 
   const { totalNasional, kanwilData, monthInfo: dataMonthInfo } = data
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportRealisasiKredit = () => {
     if (!kanwilData || kanwilData.length === 0) {
@@ -340,8 +340,8 @@ function RealisasiKreditContent({ data, metadata }) {
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>REALISASI KREDIT PER KANWIL</h2>
             <ExportButton onClick={handleExportRealisasiKredit} label="Export PDF" />
           </div>
-          <div className="overflow-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -390,7 +390,7 @@ function PosisiKreditContent({ data, metadata }) {
 
   const { totalNasional, kanwilData, monthInfo: dataMonthInfo } = data
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportPosisiKredit = () => {
     if (!kanwilData || kanwilData.length === 0) {
@@ -432,8 +432,8 @@ function PosisiKreditContent({ data, metadata }) {
             <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>POSISI KREDIT PER KANWIL</h2>
             <ExportButton onClick={handleExportPosisiKredit} label="Export PDF" />
           </div>
-          <div className="overflow-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>

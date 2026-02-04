@@ -23,13 +23,16 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
 
   useEffect(() => {
-    // Check if already authenticated
-    const authToken = localStorage.getItem('admin_auth')
-    if (authToken === 'authenticated') {
-      setIsAuthenticated(true)
-      fetchCurrentStatus()
-      fetchHistory()
-    }
+    // Verify session cookie on mount
+    fetch('/api/auth/check')
+      .then(res => {
+        if (res.ok) {
+          setIsAuthenticated(true)
+          fetchCurrentStatus()
+          fetchHistory()
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const handleLogin = async (e) => {
@@ -44,20 +47,22 @@ export default function AdminPage() {
       })
 
       if (response.ok) {
-        localStorage.setItem('admin_auth', 'authenticated')
+        // Session cookie is set by the server in the response
         setIsAuthenticated(true)
+        setPassword('')
         fetchCurrentStatus()
         fetchHistory()
       } else {
-        setAuthError('Password salah')
+        const data = await response.json()
+        setAuthError(data.error || 'Password salah')
       }
     } catch (err) {
       setAuthError('Authentication failed')
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_auth')
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
     setIsAuthenticated(false)
   }
 
@@ -242,10 +247,8 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+            <div className="mx-auto mb-4">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-12 mx-auto object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
             <p className="text-gray-600 mt-2 text-sm">SME Dashboard Management</p>
@@ -290,32 +293,32 @@ export default function AdminPage() {
 
   // Admin Dashboard
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-900 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
-                <p className="text-gray-600 text-sm">SME Dashboard Data Management</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Admin Portal</h1>
+                <p className="text-gray-600 text-xs sm:text-sm">SME Dashboard Data Management</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <a
                 href="/"
-                className="px-4 py-2 text-blue-900 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm border border-blue-900"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-blue-900 hover:bg-blue-50 rounded-lg transition-colors font-medium text-xs sm:text-sm border border-blue-900 text-center"
               >
                 View Dashboard
               </a>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium text-sm border border-gray-300"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium text-xs sm:text-sm border border-gray-300"
               >
                 Logout
               </button>
@@ -323,9 +326,9 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload Form */}
-          <div className="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Data</h2>
 
             {/* Mode Toggle */}

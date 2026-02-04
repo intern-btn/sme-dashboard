@@ -365,9 +365,9 @@ export function parseRealisasiExcel(workbook) {
   }
 
   if (dailyData.length > 0) {
-    const lastDay = dailyData[dailyData.length - 1]
-    monthlyTotals.current = lastDay.total
-    monthlyTotals.previous = lastDay.total_previous
+    // Sum all daily values to get monthly totals
+    monthlyTotals.current = dailyData.reduce((sum, day) => sum + (day.total || 0), 0)
+    monthlyTotals.previous = dailyData.reduce((sum, day) => sum + (day.total_previous || 0), 0)
   }
 
   return {

@@ -1,256 +1,178 @@
-Attribute VB_Name = "ConsolidateExcelFiles"
+Attribute VB_Name = "SeparateSheets"
 Option Explicit
 
 '====================================================================
-' SME Dashboard - Excel File Consolidation Macro
+' Separate & Compile Sheets
 '====================================================================
-' Purpose: Consolidates 5 separate Excel files into one multi-sheet workbook
-' Required files: NPL, KOL2, Realisasi, Realisasi Kredit, Posisi Kredit
-' Output: SME_Dashboard_YYYY-MM-DD.xlsx (single file with 5 sheets)
+' Scans this workbook for 5 target sheets by matching name patterns.
+' Confirms findings, then copies them AS-IS into a new .xlsx.
+' Sheets are NOT renamed or modified in any way.
 '
-' Installation:
-' 1. Press Alt+F11 in Excel to open VBA Editor
-' 2. Insert > Module
-' 3. Copy and paste this entire code
-' 4. Press F5 to run, or add to Quick Access Toolbar
+' How to use:
+'   1. Save this workbook as .xlsm (macro-enabled)
+'   2. Alt+F8  ->  select "SeparateSheets"  ->  Run
+'   3. Confirm the found sheets  ->  compiled file is saved
 '====================================================================
 
-Sub ConsolidateExcelFiles()
-    Dim folderPath As String
-    Dim outputFileName As String
-    Dim newWorkbook As Workbook
-    Dim sourceWorkbook As Workbook
-    Dim fileDialog As FileDialog
-    Dim selectedFolder As String
-    Dim files As Object
-    Dim fileNames As Object
-    Dim sheetMapping As Object
-    Dim fileName As Variant
-    Dim sheetName As String
-    Dim fileFound As Boolean
-    Dim missingFiles As String
-    Dim foundFiles As String
-    Dim totalSize As Long
-    Dim i As Integer
+Sub SeparateSheets()
 
-    ' Initialize collections
-    Set files = CreateObject("Scripting.Dictionary")
-    Set fileNames = CreateObject("Scripting.Dictionary")
+    Dim thisWB             As Workbook
+    Dim newWB              As Workbook
+    Dim fso                As Object
+    Dim sheetMapping       As Object
+
+    Dim i                  As Integer
+    Dim j                  As Integer
+    Dim sheetIdx           As Integer
+    Dim foundCount         As Integer
+
+    Dim confirmMsg         As String
+    Dim missingList        As String
+    Dim outputPath         As String
+    Dim outputFile         As String
+    Dim baseName           As String
+    Dim outName            As String
+    Dim shName             As String
+
+    Dim foundTargetNames() As String
+    Dim foundSheetNames()  As String
+    Dim targetKeys         As Variant
+    Dim patterns           As Variant
+
+    Dim matched            As Boolean
+    Dim fileSize           As Long
+
+    Set thisWB = ThisWorkbook
+
+    ' ── Define the 5 target sheets & search patterns ─────────────────
     Set sheetMapping = CreateObject("Scripting.Dictionary")
+    sheetMapping.Add "NPL",              Array("49c")
+    sheetMapping.Add "KOL2",             Array("49b")
+    sheetMapping.Add "Realisasi Harian", Array("22a")
+    sheetMapping.Add "Realisasi Kredit", Array("44a1")
+    sheetMapping.Add "Posisi Kredit",    Array("44b")
 
-    ' Define sheet name mappings based on BTN's Excel structure
-    ' Maps target sheet names to patterns found in source files
-    sheetMapping.Add "NPL", Array("49c", "NPLKC", "NPL")
-    sheetMapping.Add "KOL2", Array("49b", "Kol 2 KC", "KOL2")
-    sheetMapping.Add "Realisasi", Array("22a", "Real sub", "Realisasi")
-    sheetMapping.Add "Realisasi Kredit", Array("44a1", "Real Komit", "Realisasi Kredit")
-    sheetMapping.Add "Posisi Kredit", Array("44b", "Posisi KC", "Posisi Kredit")
+    ' ── Scan workbook sheets against patterns ────────────────────────
+    targetKeys = sheetMapping.Keys
+    ReDim foundTargetNames(0 To sheetMapping.Count - 1)
+    ReDim foundSheetNames(0 To sheetMapping.Count - 1)
+    foundCount  = 0
+    missingList = ""
 
-    ' Prompt user to select folder
-    Set fileDialog = Application.FileDialog(msoFileDialogFolderPicker)
-    With fileDialog
-        .Title = "Select Folder Containing Excel Files"
-        .AllowMultiSelect = False
-        If .Show = -1 Then
-            selectedFolder = .SelectedItems(1)
-        Else
-            MsgBox "No folder selected. Operation cancelled.", vbInformation, "Cancelled"
-            Exit Sub
+    For i = 0 To UBound(targetKeys)
+        patterns = sheetMapping(targetKeys(i))
+        matched  = False
+
+        For sheetIdx = 1 To thisWB.Sheets.Count
+            shName = thisWB.Sheets(sheetIdx).Name
+            For j = 0 To UBound(patterns)
+                If InStr(1, shName, patterns(j), vbTextCompare) = 1 Then
+                    foundTargetNames(foundCount) = targetKeys(i)
+                    foundSheetNames(foundCount)  = shName
+                    foundCount = foundCount + 1
+                    matched = True
+                    Exit For
+                End If
+            Next j
+            If matched Then Exit For
+        Next sheetIdx
+
+        If Not matched Then
+            missingList = missingList & "  x  " & targetKeys(i) & vbCrLf
         End If
-    End With
+    Next i
 
-    ' Ensure folder path ends with backslash
-    If Right(selectedFolder, 1) <> "\" Then
-        selectedFolder = selectedFolder & "\"
+    If foundCount = 0 Then
+        MsgBox "No target sheets found in this workbook.", vbInformation, "No Matches"
+        Set sheetMapping = Nothing
+        Exit Sub
     End If
 
-    ' Turn off screen updating and alerts for better performance
+    ' ── Confirm what was found ───────────────────────────────────────
+    confirmMsg = "Source: " & thisWB.Name & vbCrLf & vbCrLf
+    confirmMsg = confirmMsg & "Found:" & vbCrLf
+    For i = 0 To foundCount - 1
+        confirmMsg = confirmMsg & "  " & foundTargetNames(i) & "  (" & foundSheetNames(i) & ")" & vbCrLf
+    Next i
+
+    If missingList <> "" Then
+        confirmMsg = confirmMsg & vbCrLf & "Not found:" & vbCrLf & missingList
+    End If
+
+    confirmMsg = confirmMsg & vbCrLf & "Compile " & foundCount & " sheet(s) into new file?"
+
+    If MsgBox(confirmMsg, vbYesNo + vbQuestion, "Confirm Compilation") = vbNo Then
+        Set sheetMapping = Nothing
+        Exit Sub
+    End If
+
+    ' ── Build new workbook ───────────────────────────────────────────
     Application.ScreenUpdating = False
-    Application.DisplayAlerts = False
+    Application.DisplayAlerts  = False
+    On Error GoTo ErrHandler
 
-    On Error GoTo ErrorHandler
+    Set newWB = Workbooks.Add
 
-    ' Scan folder for Excel files and match them to expected types
-    Dim fso As Object
-    Dim folder As Object
-    Dim file As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Set folder = fso.GetFolder(selectedFolder)
-
-    For Each file In folder.files
-        If LCase(fso.GetExtensionName(file.Name)) = "xlsx" Or _
-           LCase(fso.GetExtensionName(file.Name)) = "xls" Then
-
-            ' Check if filename matches any expected patterns
-            Dim targetSheet As Variant
-            For Each targetSheet In sheetMapping.Keys
-                Dim patterns As Variant
-                patterns = sheetMapping(targetSheet)
-
-                Dim pattern As Variant
-                For Each pattern In patterns
-                    If InStr(1, file.Name, pattern, vbTextCompare) > 0 Then
-                        If Not files.Exists(targetSheet) Then
-                            files.Add targetSheet, file.Path
-                            fileNames.Add targetSheet, file.Name
-                            totalSize = totalSize + file.Size
-                            Exit For
-                        End If
-                    End If
-                Next pattern
-            Next targetSheet
-        End If
-    Next file
-
-    ' Check which files are missing
-    missingFiles = ""
-    foundFiles = ""
-    For Each targetSheet In sheetMapping.Keys
-        If files.Exists(targetSheet) Then
-            foundFiles = foundFiles & vbCrLf & "  ✓ " & targetSheet & ": " & fileNames(targetSheet)
-        Else
-            missingFiles = missingFiles & vbCrLf & "  ✗ " & targetSheet
-        End If
-    Next targetSheet
-
-    ' Show summary and ask for confirmation
-    Dim confirmMsg As String
-    confirmMsg = "Files Found in: " & selectedFolder & vbCrLf & vbCrLf
-    confirmMsg = confirmMsg & "FOUND:" & foundFiles & vbCrLf
-
-    If Len(missingFiles) > 0 Then
-        confirmMsg = confirmMsg & vbCrLf & "MISSING:" & missingFiles & vbCrLf & vbCrLf
-        confirmMsg = confirmMsg & "Continue with partial consolidation?"
-    Else
-        confirmMsg = confirmMsg & vbCrLf & "Total size: " & Format(totalSize / 1024 / 1024, "0.00") & " MB" & vbCrLf & vbCrLf
-        confirmMsg = confirmMsg & "Proceed with consolidation?"
-    End If
-
-    If MsgBox(confirmMsg, vbYesNo + vbQuestion, "Confirm Consolidation") = vbNo Then
-        MsgBox "Operation cancelled by user.", vbInformation, "Cancelled"
-        GoTo CleanUp
-    End If
-
-    ' Create new workbook for consolidated data
-    Set newWorkbook = Workbooks.Add
-
-    ' Remove default sheets except one
-    Application.DisplayAlerts = False
-    Do While newWorkbook.Worksheets.Count > 1
-        newWorkbook.Worksheets(newWorkbook.Worksheets.Count).Delete
+    ' Trim to 1 placeholder sheet
+    Do While newWB.Sheets.Count > 1
+        newWB.Sheets(newWB.Sheets.Count).Delete
     Loop
-    Application.DisplayAlerts = True
+    newWB.Sheets(1).Name = "___placeholder___"
 
-    ' Process each file type
-    Dim sheetIndex As Integer
-    sheetIndex = 1
+    ' Copy sheets exactly as-is — no rename, no changes
+    For i = 0 To foundCount - 1
+        thisWB.Sheets(foundSheetNames(i)).Copy After:=newWB.Sheets(newWB.Sheets.Count)
+    Next i
 
-    For Each targetSheet In sheetMapping.Keys
-        If files.Exists(targetSheet) Then
-            ' Open source workbook
-            Set sourceWorkbook = Workbooks.Open(files(targetSheet), ReadOnly:=True)
+    ' Remove placeholder
+    newWB.Sheets("___placeholder___").Delete
 
-            ' Copy first sheet to new workbook
-            If sheetIndex = 1 Then
-                ' For first sheet, just rename it
-                sourceWorkbook.Worksheets(1).Copy Before:=newWorkbook.Worksheets(1)
-                newWorkbook.Worksheets(1).Name = targetSheet
-                Application.DisplayAlerts = False
-                newWorkbook.Worksheets(2).Delete ' Delete the default sheet
-                Application.DisplayAlerts = True
-            Else
-                ' For subsequent sheets, add after last sheet
-                sourceWorkbook.Worksheets(1).Copy After:=newWorkbook.Worksheets(newWorkbook.Worksheets.Count)
-                newWorkbook.Worksheets(newWorkbook.Worksheets.Count).Name = targetSheet
-            End If
+    ' ── Save ─────────────────────────────────────────────────────────
+    outputPath = Environ("USERPROFILE") & "\Downloads\"
 
-            ' Close source workbook
-            sourceWorkbook.Close SaveChanges:=False
-            sheetIndex = sheetIndex + 1
-        End If
-    Next targetSheet
+    baseName = thisWB.Name
+    If InStr(baseName, ".") > 0 Then
+        baseName = Left(baseName, InStr(baseName, ".") - 1)
+    End If
 
-    ' Generate output filename with current date
-    outputFileName = selectedFolder & "SME_Dashboard_" & Format(Date, "yyyy-mm-dd") & ".xlsx"
+    outName    = baseName & "_Compiled_" & Format(Now, "YYYY-MM-DD") & ".xlsx"
+    outputFile = outputPath & outName
 
-    ' Save consolidated workbook
-    newWorkbook.SaveAs fileName:=outputFileName, FileFormat:=xlOpenXMLWorkbook
+    newWB.SaveAs FileName:=outputFile, FileFormat:=xlOpenXMLWorkbook
 
-    ' Get final file size
-    Dim finalSize As Long
-    finalSize = fso.GetFile(outputFileName).Size
+    ' ── Done ─────────────────────────────────────────────────────────
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts  = True
 
-    ' Close the new workbook
-    newWorkbook.Close SaveChanges:=False
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    fileSize = fso.GetFile(outputFile).Size
 
-    ' Show success message
-    MsgBox "Consolidation complete!" & vbCrLf & vbCrLf & _
-           "File: " & fso.GetFileName(outputFileName) & vbCrLf & _
-           "Location: " & selectedFolder & vbCrLf & _
-           "Size: " & Format(finalSize / 1024 / 1024, "0.00") & " MB" & vbCrLf & _
-           "Sheets: " & (sheetIndex - 1) & " of 5", _
+    MsgBox "Compilation complete!" & vbCrLf & vbCrLf & _
+           "File:     " & outName & vbCrLf & _
+           "Location: " & outputPath & vbCrLf & _
+           "Size:     " & Format(fileSize / 1024, "0.00") & " KB" & vbCrLf & _
+           "Sheets:   " & foundCount, _
            vbInformation, "Success"
 
-    ' Open folder in Explorer
-    Shell "explorer.exe /select," & Chr(34) & outputFileName & Chr(34), vbNormalFocus
+    Shell "explorer.exe /select," & Chr(34) & outputFile & Chr(34), vbNormalFocus
 
-CleanUp:
-    ' Restore settings
-    Application.ScreenUpdating = True
-    Application.DisplayAlerts = True
-
-    ' Clean up objects
-    Set newWorkbook = Nothing
-    Set sourceWorkbook = Nothing
-    Set fileDialog = Nothing
-    Set files = Nothing
-    Set fileNames = Nothing
+    Set fso          = Nothing
+    Set newWB        = Nothing
     Set sheetMapping = Nothing
-    Set fso = Nothing
-    Set folder = Nothing
-    Set file = Nothing
-
     Exit Sub
 
-ErrorHandler:
+' ── Error handler ────────────────────────────────────────────────────
+ErrHandler:
     Application.ScreenUpdating = True
-    Application.DisplayAlerts = True
+    Application.DisplayAlerts  = True
+    MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Error"
 
-    MsgBox "An error occurred: " & vbCrLf & vbCrLf & _
-           "Error " & Err.Number & ": " & Err.Description, _
-           vbCritical, "Error"
-
-    ' Clean up
-    If Not newWorkbook Is Nothing Then
-        newWorkbook.Close SaveChanges:=False
+    On Error Resume Next
+    If Not newWB Is Nothing Then
+        newWB.Close SaveChanges:=False
     End If
-    If Not sourceWorkbook Is Nothing Then
-        sourceWorkbook.Close SaveChanges:=False
-    End If
-
-    Resume CleanUp
+    Set newWB        = Nothing
+    Set fso          = Nothing
+    Set sheetMapping = Nothing
+    On Error GoTo 0
 End Sub
-
-'====================================================================
-' INSTALLATION INSTRUCTIONS
-'====================================================================
-' METHOD 1: Quick Access Toolbar (Recommended)
-' 1. Right-click Quick Access Toolbar
-' 2. Select "Customize Quick Access Toolbar"
-' 3. Choose "Macros" from dropdown
-' 4. Select "ConsolidateExcelFiles"
-' 5. Click "Add"
-' 6. Optional: Click "Modify" to change icon
-'
-' METHOD 2: Keyboard Shortcut
-' 1. Press Alt+F8
-' 2. Select "ConsolidateExcelFiles"
-' 3. Click "Options"
-' 4. Assign shortcut key (e.g., Ctrl+Shift+C)
-'
-' METHOD 3: Developer Tab Button
-' 1. Enable Developer tab: File > Options > Customize Ribbon > Developer
-' 2. Click "Insert" > Button (Form Control)
-' 3. Draw button on sheet
-' 4. Select "ConsolidateExcelFiles" from list
-'====================================================================

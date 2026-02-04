@@ -18,6 +18,9 @@ export default function NPLDashboardPage() {
   // Mode state (tv or browser)
   const [mode, setMode] = useState('browser')
 
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   // Load mode preference from localStorage
   useEffect(() => {
     const savedMode = localStorage.getItem('dashboard_mode')
@@ -127,9 +130,27 @@ export default function NPLDashboardPage() {
   // Browser Mode Layout
   return (
     <main className="relative flex">
-      <Sidebar currentPage={currentPage} onNavigate={goToPage} metadata={nplMetadata} />
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={goToPage}
+        metadata={nplMetadata}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <div className="flex-1 ml-64 min-h-screen bg-gray-50">
+      {/* Hamburger Menu Button (Mobile only) */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="fixed top-4 left-4 z-30 lg:hidden bg-white p-2 rounded-lg shadow-lg border border-gray-200"
+        style={{ backgroundColor: '#003d7a' }}
+        aria-label="Open menu"
+      >
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      <div className="flex-1 lg:ml-64 min-h-screen bg-gray-50">
         <div className="transition-all duration-300">
           {renderPage()}
         </div>

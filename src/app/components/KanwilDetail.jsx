@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { Label } from 'recharts'
 import { getMonthInfo, formatDateID } from '../lib/dateUtils'
 import ExportButton from './ExportButton'
 import {
@@ -48,14 +48,14 @@ export default function KanwilDetail({
   const { data, metadata } = getActiveData()
 
   return (
-    <div className="min-h-screen p-8 bg-white">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-white">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>KANWIL {currentKanwil?.toUpperCase()}</h1>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 uppercase" style={{ color: '#003d7a' }}>KANWIL {currentKanwil?.toUpperCase()}</h1>
 
         {/* Tabs */}
-        <div className="bg-white border border-gray-300 rounded-lg shadow-sm">
-          <div className="flex">
+        <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+          <div className="flex overflow-x-auto">
             {tabs.map(tab => {
               const isActive = activeTab === tab.id
 
@@ -64,7 +64,7 @@ export default function KanwilDetail({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className="flex-1 px-4 py-2 font-semibold text-sm transition-all text-white border-b-4"
+                    className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 font-semibold text-xs sm:text-sm transition-all text-white border-b-4 whitespace-nowrap"
                     style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
                   >
                     {tab.label}
@@ -76,7 +76,7 @@ export default function KanwilDetail({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 px-4 py-2 font-semibold text-sm transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 font-semibold text-xs sm:text-sm transition-all bg-gray-50 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                 >
                   {tab.label}
                 </button>
@@ -117,22 +117,7 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
     exportTableToPDF(pdfData)
   }
 
-  const comparisonData = [
-    {
-      month: previousMonth?.shortName || 'Prev',
-      total: kanwilSummary.totalPercent_previous || 0,
-      kumk: kanwilSummary.kumkPercent_previous || 0,
-      kur: kanwilSummary.kurPercent_previous || 0
-    },
-    {
-      month: currentMonth?.shortName || 'Curr',
-      total: kanwilSummary.totalPercent_current || 0,
-      kumk: kanwilSummary.kumkPercent_current || 0,
-      kur: kanwilSummary.kurPercent_current || 0
-    }
-  ]
-
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
   const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
   const previousDateLabel = previousMonth?.shortLabel || formatDateID(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'short')
 
@@ -141,9 +126,9 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
       {/* Summary Cards */}
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary NPL {kanwilName}</h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total NPL</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total NPL (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.total_current)}</span>
@@ -157,7 +142,7 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
           </div>
 
           <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_current)}</span>
@@ -171,7 +156,7 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
           </div>
 
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.kur_current)}</span>
@@ -186,76 +171,14 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
         </div>
       </div>
 
-      {/* Outstanding */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Outstanding Portfolio Size</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gray-50 border-l-4 p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total Outstanding</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-xl font-bold">Rp {f(kanwilSummary.outstanding_total_current || 0)} Jt</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-base text-gray-600">Rp {f(kanwilSummary.outstanding_total_previous || 0)} Jt</span>
-            </div>
-            <div className="mt-2 text-xs text-gray-500">NPL Ratio: {(kanwilSummary.totalPercent_current || 0).toFixed(2)}%</div>
-          </div>
-
-          <div className="bg-gray-50 border-l-4 border-green-500 p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK Outstanding</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-xl font-bold">Rp {f(kanwilSummary.outstanding_kumk_current || 0)} Jt</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-base text-gray-600">Rp {f(kanwilSummary.outstanding_kumk_previous || 0)} Jt</span>
-            </div>
-            <div className="mt-2 text-xs text-gray-500">NPL Ratio: {(kanwilSummary.kumkPercent_current || 0).toFixed(2)}%</div>
-          </div>
-
-          <div className="bg-gray-50 border-l-4 p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR Outstanding</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-xl font-bold">Rp {f(kanwilSummary.outstanding_kur_current || 0)} Jt</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-base text-gray-600">Rp {f(kanwilSummary.outstanding_kur_previous || 0)} Jt</span>
-            </div>
-            <div className="mt-2 text-xs text-gray-500">NPL Ratio: {(kanwilSummary.kurPercent_current || 0).toFixed(2)}%</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white border border-gray-300 shadow-sm rounded-lg p-5 mb-6">
-        <h2 className="text-lg font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>Perbandingan {previousMonth?.fullLabel || 'Bulan Lalu'} vs {currentMonth?.fullLabel || 'Bulan Ini'}</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={comparisonData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip formatter={(v) => `${v.toFixed(2)}%`} />
-            <Legend />
-            <Line type="monotone" dataKey="total" stroke="#1976D2" strokeWidth={2} name="Total NPL" />
-            <Line type="monotone" dataKey="kumk" stroke="#22C55E" strokeWidth={2} name="KUMK" />
-            <Line type="monotone" dataKey="kur" stroke="#F97316" strokeWidth={2} name="KUR" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
       {/* Cabang Table */}
       <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
           <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail NPL Per Cabang ({sortedCabang.length})</h2>
           <ExportButton onClick={handleExportNPLCabang} label="Export PDF" />
         </div>
-        <div className="overflow-auto max-h-[400px]">
-          <table className="w-full">
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+          <table className="w-full min-w-[900px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -321,7 +244,7 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.total_current || 0) - (a.total_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
   const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
   const previousDateLabel = previousMonth?.shortLabel || formatDateID(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'short')
 
@@ -337,9 +260,9 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
     <>
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary KOL 2 {kanwilName}</h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total KOL 2</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total KOL 2 (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.total_current)}</span>
@@ -353,7 +276,7 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
           </div>
 
           <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_current)}</span>
@@ -367,7 +290,7 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
           </div>
 
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-xs text-gray-500">{currentDateLabel}</span>
               <span className="text-2xl font-bold">Rp {f(kanwilSummary.kur_current)}</span>
@@ -387,8 +310,8 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
           <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail KOL 2 Per Cabang ({sortedCabang.length})</h2>
           <ExportButton onClick={handleExportKOL2Cabang} label="Export PDF" />
         </div>
-        <div className="overflow-auto max-h-[500px]">
-          <table className="w-full">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+          <table className="w-full min-w-[900px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -433,7 +356,7 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.kumk_real_current || 0) - (a.kumk_real_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportRealisasiKreditCabang = () => {
     if (!cabangList || cabangList.length === 0) {
@@ -449,13 +372,13 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Realisasi Kredit {kanwilName}</h2>
         <div className="grid grid-cols-4 gap-4">
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
             <div className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_real_current || 0)}</div>
             <div className="text-xs text-gray-500 mt-1">1-{monthInfo.current?.day || 26} {monthInfo.current?.shortName || 'Jan'}'26</div>
           </div>
 
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR</div>
+            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
             <div className="text-2xl font-bold">Rp {f(kanwilSummary.kur_total_current || 0)}</div>
             <div className="text-xs text-gray-500 mt-1">Total KUR</div>
           </div>
@@ -479,8 +402,8 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
           <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Realisasi Kredit Per Cabang ({sortedCabang.length})</h2>
           <ExportButton onClick={handleExportRealisasiKreditCabang} label="Export PDF" />
         </div>
-        <div className="overflow-auto max-h-[500px]">
-          <table className="w-full">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+          <table className="w-full min-w-[900px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
@@ -528,7 +451,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.posisi_current || 0) - (a.posisi_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   const handleExportPosisiKreditCabang = () => {
     if (!cabangList || cabangList.length === 0) {
@@ -575,8 +498,8 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
           <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Posisi Kredit Per Cabang ({sortedCabang.length})</h2>
           <ExportButton onClick={handleExportPosisiKreditCabang} label="Export PDF" />
         </div>
-        <div className="overflow-auto max-h-[500px]">
-          <table className="w-full">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
+          <table className="w-full min-w-[900px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>

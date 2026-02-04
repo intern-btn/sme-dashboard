@@ -30,11 +30,11 @@ export default function ProgressIndicator({ currentPage, pageName, onNavigate })
   }
 
   return (
-    <div className="fixed bottom-8 left-0 right-0 flex items-center justify-center z-50">
-      <div className="bg-black/80 backdrop-blur-sm px-8 py-4 rounded-full shadow-2xl">
-        <div className="flex items-center gap-3">
+    <div className="fixed bottom-4 sm:bottom-8 left-0 right-0 flex items-center justify-center z-50 px-2">
+      <div className="bg-black/80 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-4 rounded-full shadow-2xl max-w-full overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Navigation dots */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {pages.map((page) => {
               const isActive = page.id === currentPage
 
@@ -45,8 +45,8 @@ export default function ProgressIndicator({ currentPage, pageName, onNavigate })
                   className={`
                     transition-all duration-300 rounded-full cursor-pointer
                     ${isActive
-                      ? 'w-4 h-4 bg-primary scale-125 shadow-lg shadow-primary/50'
-                      : 'w-2.5 h-2.5 bg-gray-500 hover:bg-gray-400 hover:scale-110'
+                      ? 'w-3 h-3 sm:w-4 sm:h-4 bg-primary scale-125 shadow-lg shadow-primary/50'
+                      : 'w-2 h-2 sm:w-2.5 sm:h-2.5 bg-gray-500 hover:bg-gray-400 hover:scale-110'
                     }
                   `}
                   title={page.name}
@@ -57,12 +57,12 @@ export default function ProgressIndicator({ currentPage, pageName, onNavigate })
           </div>
 
           {/* Current page info */}
-          <div className="ml-4 flex items-center gap-3 border-l border-gray-600 pl-4">
-            <span className="text-gray-400 text-sm">{section}:</span>
-            <span className="text-white font-semibold text-lg">
+          <div className="ml-2 sm:ml-4 flex items-center gap-2 sm:gap-3 border-l border-gray-600 pl-2 sm:pl-4 min-w-0">
+            <span className="text-gray-400 text-xs sm:text-sm hidden sm:inline">{section}:</span>
+            <span className="text-white font-semibold text-sm sm:text-lg truncate">
               {pageName}
             </span>
-            <span className="text-gray-500 text-sm">
+            <span className="text-gray-500 text-xs sm:text-sm">
               ({currentPage + 2}/11)
             </span>
           </div>

@@ -34,7 +34,7 @@ export default function KOL2KanwilDetail({ data, kanwilIndex, metadata }) {
     }
   ]
 
-  const f = (n) => new Intl.NumberFormat('id-ID').format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
 
   // Format dates for display
   const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')

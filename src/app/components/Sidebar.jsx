@@ -12,7 +12,7 @@ const KANWIL_NAMES = [
   'Sumatera 2'
 ]
 
-export default function Sidebar({ currentPage, onNavigate, metadata }) {
+export default function Sidebar({ currentPage, onNavigate, metadata, isOpen, onClose }) {
   const menuItems = [
     { page: -1, label: 'Realisasi Harian', section: 'main' },
     { page: 0, label: 'Overview Dashboard', section: 'main' },
@@ -35,14 +35,29 @@ export default function Sidebar({ currentPage, onNavigate, metadata }) {
     })
   }
 
+  const handleNavigate = (page) => {
+    onNavigate(page)
+    if (onClose) onClose() // Close sidebar on mobile after navigation
+  }
+
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 z-50 shadow-lg">
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onClose}
+        ></div>
+      )}
+
+      {/* Sidebar */}
+      <aside className={`w-64 h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 z-50 shadow-lg transition-transform duration-300 lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200" style={{ backgroundColor: '#003d7a' }}>
         <div className="flex items-center gap-3">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-8 w-auto object-contain" />
           <div>
             <h1 className="font-bold text-white text-lg">SME Dashboard</h1>
             <p className="text-xs" style={{ color: '#cbd5e0' }}>Monitoring NPL & Kredit</p>
@@ -58,7 +73,7 @@ export default function Sidebar({ currentPage, onNavigate, metadata }) {
           return (
             <button
               key={item.page}
-              onClick={() => onNavigate(item.page)}
+              onClick={() => handleNavigate(item.page)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                 isActive
                   ? 'text-white border-r-4'
@@ -87,7 +102,7 @@ export default function Sidebar({ currentPage, onNavigate, metadata }) {
           return (
             <button
               key={item.page}
-              onClick={() => onNavigate(item.page)}
+              onClick={() => handleNavigate(item.page)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                 isActive
                   ? 'text-white border-r-4'
@@ -123,5 +138,6 @@ export default function Sidebar({ currentPage, onNavigate, metadata }) {
         </a>
       </div>
     </aside>
+    </>
   )
 }
