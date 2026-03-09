@@ -328,20 +328,15 @@ export function formatKOL2CabangData(cabangData, kanwilName, monthInfo) {
 // ==================== Realisasi Kredit Formatters ====================
 
 export function formatRealisasiKreditKanwilData(kanwilData, monthInfo) {
-  const headers = ['No', 'Kanwil', 'KUMK (Jt)', 'KUR (Jt)', 'UMKM (Jt)', 'Total (Jt)', '% Vs. RKAP']
+  const headers = ['No', 'Kanwil', 'KUMK (Jt)', 'KUR (Jt)', 'Total Realisasi (Jt)']
 
   const data = kanwilData.map((k, i) => {
-    const totalRealisasi = (k.kumk_real_current || 0) + (k.kur_total_current || 0) + (k.umkm_real_current || 0)
-    const avgPcpRkap = ((k.kumk_pcp_rkap || 0) + (k.kur_pcp_rkap || 0) + (k.umkm_pcp_rkap || 0)) / 3
-
     return [
       i + 1,
       k.name,
       formatNumber(k.kumk_real_current || 0),
       formatNumber(k.kur_total_current || 0),
-      formatNumber(k.umkm_real_current || 0),
-      formatNumber(totalRealisasi),
-      styledCell(`${avgPcpRkap.toFixed(1)}%`, getPerformanceStyle(avgPcpRkap, 90))
+      formatNumber(k.umkm_real_current || 0)
     ]
   })
 
@@ -354,33 +349,26 @@ export function formatRealisasiKreditKanwilData(kanwilData, monthInfo) {
     fileName: `RealisasiKredit_Kanwil_${monthInfo?.current?.shortName || 'Data'}_${monthInfo?.current?.year || new Date().getFullYear()}.pdf`,
     columnStyles: {
       0: { halign: 'center', cellWidth: 12 },
-      1: { halign: 'left', cellWidth: 50 },
+      1: { halign: 'left', cellWidth: 60 },
       2: { halign: 'right', cellWidth: 35 },
       3: { halign: 'right', cellWidth: 35 },
-      4: { halign: 'right', cellWidth: 35 },
-      5: { halign: 'right', cellWidth: 35 },
-      6: { halign: 'right', cellWidth: 30 }
+      4: { halign: 'right', cellWidth: 45 }
     }
   }
 }
 
 export function formatRealisasiKreditCabangData(cabangData, kanwilName, monthInfo) {
-  const headers = ['No', 'Cabang', 'KUMK (Jt)', 'KUR (Jt)', 'UMKM (Jt)', 'Total (Jt)', 'Gap (Jt)']
+  const headers = ['No', 'Cabang', 'KUMK (Jt)', 'KUR (Jt)', 'Total Realisasi (Jt)']
 
   const sortedCabang = [...cabangData].sort((a, b) => (b.kumk_real_current || 0) - (a.kumk_real_current || 0))
 
   const data = sortedCabang.map((c, i) => {
-    const totalRealisasi = (c.kumk_real_current || 0) + (c.kur_total_current || 0) + (c.umkm_real_current || 0)
-    const totalGap = (c.kumk_gap_prev || 0) + (c.kur_gap_prev || 0) + (c.umkm_gap_prev || 0)
-
     return [
       i + 1,
       c.name,
       formatNumber(c.kumk_real_current || 0),
       formatNumber(c.kur_total_current || 0),
-      formatNumber(c.umkm_real_current || 0),
-      formatNumber(totalRealisasi),
-      styledCell(formatNumber(totalGap), getGapStyle(totalGap, false))
+      formatNumber(c.umkm_real_current || 0)
     ]
   })
 
@@ -395,12 +383,10 @@ export function formatRealisasiKreditCabangData(cabangData, kanwilName, monthInf
     fileName: `RealisasiKredit_Cabang_${sanitizedKanwil}_${monthInfo?.current?.shortName || 'Data'}_${monthInfo?.current?.year || new Date().getFullYear()}.pdf`,
     columnStyles: {
       0: { halign: 'center', cellWidth: 12 },
-      1: { halign: 'left', cellWidth: 55 },
+      1: { halign: 'left', cellWidth: 65 },
       2: { halign: 'right', cellWidth: 35 },
       3: { halign: 'right', cellWidth: 35 },
-      4: { halign: 'right', cellWidth: 35 },
-      5: { halign: 'right', cellWidth: 35 },
-      6: { halign: 'right', cellWidth: 30 }
+      4: { halign: 'right', cellWidth: 45 }
     }
   }
 }

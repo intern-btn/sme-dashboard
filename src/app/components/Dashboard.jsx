@@ -135,17 +135,17 @@ function NPLContent({ data, metadata }) {
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL NPL - {monthInfo.current.fullLabel}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total NPL</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total NPL (Jt)</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
               <div className="text-xl font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.totalPercent_current || 0).toFixed(2)}%</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kumk_current)}</div>
               <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kumkPercent_current || 0).toFixed(2)}%</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kur_current)}</div>
               <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kurPercent_current || 0).toFixed(2)}%</div>
             </div>
@@ -223,17 +223,17 @@ function KOL2Content({ data, metadata }) {
           <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL KOL 2 - {monthInfo.current.fullLabel}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total KOL 2</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total KOL 2 (Jt)</div>
               <div className="text-3xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.total_current)}</div>
               <div className="text-xl font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.totalPercent_current || 0).toFixed(2)}%</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kumk_current)}</div>
               <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kumkPercent_current || 0).toFixed(2)}%</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kur_current)}</div>
               <div className="text-lg font-semibold" style={{ color: '#003d7a' }}>{(totalNasional.kurPercent_current || 0).toFixed(2)}%</div>
             </div>
@@ -308,27 +308,22 @@ function RealisasiKreditContent({ data, metadata }) {
     <>
       {totalNasional && (
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
-          <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL REALISASI KREDIT{monthInfo?.current?.fullLabel ? ` - ${monthInfo.current.fullLabel}` : ''}</h2>
-          <div className="grid grid-cols-4 gap-4">
+          <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL REALISASI KREDIT - {monthInfo.current.fullLabel}</h2>
+          <div className="grid grid-cols-3 gap-4">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUMK (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kumk_real_current || 0)}</div>
               <div className="text-sm text-gray-500">1-{monthInfo.current?.day || 26} {monthInfo.current?.shortName || 'Jan'}'26</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">KUR (Jt)</div>
               <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.kur_total_current || 0)}</div>
               <div className="text-sm text-gray-500">Total KUR</div>
             </div>
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">UMKM</div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">Rp {f(totalNasional.umkm_real_current || 0)}</div>
-              <div className="text-sm text-gray-500">Real UMKM</div>
-            </div>
-            <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total Realisasi</div>
-              <div className="text-2xl font-bold mb-1" style={{ color: '#003d7a' }}>Rp {f((totalNasional.kumk_real_current || 0) + (totalNasional.kur_total_current || 0) + (totalNasional.umkm_real_current || 0))}</div>
-              <div className="text-sm text-gray-500">KUMK + KUR + UMKM</div>
+              <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Total Realisasi (Jt)</div>
+              <div className="text-2xl font-bold mb-1" style={{ color: '#003d7a' }}>Rp {f(totalNasional.umkm_real_current || 0)}</div>
+              <div className="text-sm text-gray-500">Total Realisasi</div>
             </div>
           </div>
         </div>
@@ -341,32 +336,25 @@ function RealisasiKreditContent({ data, metadata }) {
             <ExportButton onClick={handleExportRealisasiKredit} label="Export PDF" />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[560px]">
               <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
                 <tr className="text-sm">
                   <th className="py-3 px-4 text-left font-semibold">No</th>
                   <th className="py-3 px-4 text-left font-semibold">Kanwil</th>
                   <th className="py-3 px-4 text-right font-semibold">KUMK (Jt)</th>
                   <th className="py-3 px-4 text-right font-semibold">KUR (Jt)</th>
-                  <th className="py-3 px-4 text-right font-semibold">UMKM (Jt)</th>
-                  <th className="py-3 px-4 text-right font-semibold">Total (Jt)</th>
-                  <th className="py-3 px-4 text-right font-semibold">% Vs. RKAP</th>
+                  <th className="py-3 px-4 text-right font-semibold">Total Realisasi (Jt)</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 {kanwilData.map((k, i) => {
-                  const totalRealisasi = (k.kumk_real_current || 0) + (k.kur_total_current || 0) + (k.umkm_real_current || 0)
-                  const avgPcpRkap = ((k.kumk_pcp_rkap || 0) + (k.kur_pcp_rkap || 0) + (k.umkm_pcp_rkap || 0)) / 3
-
                   return (
                     <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4">{i + 1}</td>
                       <td className="py-3 px-4 font-medium">{k.name}</td>
                       <td className="py-3 px-4 text-right">{f(k.kumk_real_current || 0)}</td>
                       <td className="py-3 px-4 text-right">{f(k.kur_total_current || 0)}</td>
-                      <td className="py-3 px-4 text-right">{f(k.umkm_real_current || 0)}</td>
-                      <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(totalRealisasi)}</td>
-                      <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{avgPcpRkap.toFixed(1)}%</td>
+                      <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(k.umkm_real_current || 0)}</td>
                     </tr>
                   )
                 })}
@@ -404,7 +392,7 @@ function PosisiKreditContent({ data, metadata }) {
     <>
       {totalNasional && (
         <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
-          <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL POSISI KREDIT{monthInfo?.current?.fullLabel ? ` - ${monthInfo.current.fullLabel}` : ''}</h2>
+          <h2 className="text-xl font-bold mb-4 uppercase" style={{ color: '#003d7a' }}>TOTAL NASIONAL POSISI KREDIT - {monthInfo.current.fullLabel}</h2>
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
               <div className="text-gray-600 text-sm mb-1 font-medium uppercase">Posisi Awal Jan</div>

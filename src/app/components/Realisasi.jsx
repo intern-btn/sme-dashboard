@@ -20,11 +20,11 @@ export default function Realisasi({ data }) {
   const currentMonth = monthInfo.current
   const previousMonth = monthInfo.previous
 
-  const formatCurrency = (num) => {
+  const formatJt = (num) => {
     return new Intl.NumberFormat('id-ID', {
-      notation: 'compact',
-      compactDisplay: 'short'
-    }).format(num)
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0
+    }).format(num || 0)
   }
 
   // Prepare comparison data with actual previous month data
@@ -75,7 +75,7 @@ export default function Realisasi({ data }) {
         <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
           <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
           <div className="text-3xl font-bold text-gray-900">
-            Rp {formatCurrency(previousTotal)} Jt
+            Rp {formatJt(previousTotal)} Jt
           </div>
           <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
         </div>
@@ -83,7 +83,7 @@ export default function Realisasi({ data }) {
         <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
           <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{currentMonth?.fullLabel || 'Bulan Ini'}</div>
           <div className="text-3xl font-bold" style={{ color: '#003d7a' }}>
-            Rp {formatCurrency(currentTotal)} Jt
+            Rp {formatJt(currentTotal)} Jt
           </div>
           <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
         </div>
@@ -184,7 +184,7 @@ export default function Realisasi({ data }) {
             />
             <YAxis
               stroke="#6B7280"
-              tickFormatter={(value) => formatCurrency(value)}
+              tickFormatter={(value) => formatJt(value)}
               label={{ value: 'Realisasi (Jt)', angle: -90, position: 'insideLeft', fill: '#6B7280' }}
               style={{ fontSize: '12px' }}
             />
@@ -196,7 +196,7 @@ export default function Realisasi({ data }) {
                 color: '#1F2937',
                 padding: '12px'
               }}
-              formatter={(value) => `Rp ${formatCurrency(value)} Jt`}
+              formatter={(value) => `Rp ${formatJt(value)} Jt`}
               labelFormatter={(label) => `Tanggal ${label}`}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }} />
@@ -358,33 +358,33 @@ export default function Realisasi({ data }) {
                       {day.date} {currentMonth?.shortName || ''}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatCurrency(day.kur)}
+                      {formatJt(day.kur)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatCurrency(day.kumk)}
+                      {formatJt(day.kumk)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatCurrency(day.smeSwadana)}
+                      {formatJt(day.smeSwadana)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatCurrency(day.kumkLainnya || 0)}
+                      {formatJt(day.kumkLainnya || 0)}
                     </td>
                     <td className="py-3 px-4 text-right text-blue-600">
-                      {formatCurrency(day.kppSupply || 0)}
+                      {formatJt(day.kppSupply || 0)}
                     </td>
                     <td className="py-3 px-4 text-right text-purple-600">
-                      {formatCurrency(day.kppDemand || 0)}
+                      {formatJt(day.kppDemand || 0)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900 font-bold">
-                      {formatCurrency(day.total)}
+                      {formatJt(day.total)}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {idx === 0 ? (
                         <span className="text-gray-400">-</span>
                       ) : isUp ? (
-                        <span className="text-green-600 font-bold">+ {formatCurrency(Math.abs(diff))}</span>
+                        <span className="text-green-600 font-bold">+ {formatJt(Math.abs(diff))}</span>
                       ) : diff < 0 ? (
-                        <span className="text-red-600 font-bold">- {formatCurrency(Math.abs(diff))}</span>
+                        <span className="text-red-600 font-bold">- {formatJt(Math.abs(diff))}</span>
                       ) : (
                         <span className="text-gray-500">-</span>
                       )}

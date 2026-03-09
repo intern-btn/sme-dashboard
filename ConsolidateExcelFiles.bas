@@ -50,7 +50,7 @@ Sub SeparateSheets()
     sheetMapping.Add "KOL2",             Array("49b")
     sheetMapping.Add "Realisasi Harian", Array("22a")
     sheetMapping.Add "Realisasi Kredit", Array("44a1")
-    sheetMapping.Add "Posisi Kredit",    Array("44b")
+    sheetMapping.Add "Posisi Kredit",    Array("44b. Posisi")
 
     ' ── Scan workbook sheets against patterns ────────────────────────
     targetKeys = sheetMapping.Keys

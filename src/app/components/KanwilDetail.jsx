@@ -370,7 +370,7 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
     <>
       <div className="mb-6">
         <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Realisasi Kredit {kanwilName}</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
             <div className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_real_current || 0)}</div>
@@ -384,15 +384,9 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
           </div>
 
           <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">UMKM</div>
-            <div className="text-2xl font-bold">Rp {f(kanwilSummary.umkm_real_current || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">Real UMKM</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
             <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total Realisasi</div>
-            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f((kanwilSummary.kumk_real_current || 0) + (kanwilSummary.kur_total_current || 0) + (kanwilSummary.umkm_real_current || 0))}</div>
-            <div className="text-xs text-gray-500 mt-1">KUMK + KUR + UMKM</div>
+            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.umkm_real_current || 0)}</div>
+            <div className="text-xs text-gray-500 mt-1">Total Realisasi</div>
           </div>
         </div>
       </div>
@@ -403,32 +397,25 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
           <ExportButton onClick={handleExportRealisasiKreditCabang} label="Export PDF" />
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[760px]">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
               <tr className="text-sm">
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
                 <th className="py-3 px-4 text-right font-semibold">KUMK (Jt)</th>
                 <th className="py-3 px-4 text-right font-semibold">KUR (Jt)</th>
-                <th className="py-3 px-4 text-right font-semibold">UMKM (Jt)</th>
-                <th className="py-3 px-4 text-right font-semibold">Total (Jt)</th>
-                <th className="py-3 px-4 text-right font-semibold">Gap (Jt)</th>
+                <th className="py-3 px-4 text-right font-semibold">Total Realisasi (Jt)</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {sortedCabang.map((c, i) => {
-                const totalRealisasi = (c.kumk_real_current || 0) + (c.kur_total_current || 0) + (c.umkm_real_current || 0)
-                const totalGap = (c.kumk_gap_prev || 0) + (c.kur_gap_prev || 0) + (c.umkm_gap_prev || 0)
-
                 return (
                   <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">{i + 1}</td>
                     <td className="py-3 px-4 font-medium">{c.name}</td>
                     <td className="py-3 px-4 text-right">{f(c.kumk_real_current || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(c.kur_total_current || 0)}</td>
-                    <td className="py-3 px-4 text-right">{f(c.umkm_real_current || 0)}</td>
-                    <td className="py-3 px-4 text-right font-semibold">{f(totalRealisasi)}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">{f(totalGap)}</td>
+                    <td className="py-3 px-4 text-right font-semibold">{f(c.umkm_real_current || 0)}</td>
                   </tr>
                 )
               })}
