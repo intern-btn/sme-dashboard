@@ -837,6 +837,256 @@ export function parsePosisiKreditExcel(workbook) {
 }
 
 // ============================================
+// PRK SPBU PARSERS
+// ============================================
+
+export function parseIDASforSPBU(workbook) {
+  const sheetName = workbook.SheetNames[0]
+  const sheet = workbook.Sheets[sheetName]
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+  const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
+  const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => norm(c) === 'TIPE PRODUK' || norm(c).includes('TIPE PRODUK')))
+  if (headerRowIndex === -1) {
+    return {
+      type: 'prk_spbu',
+      idasDate: null,
+      rows: [],
+      summary: {
+        totalDebitur: 0,
+        totalBakiDebet: 0,
+        totalPlafond: 0,
+        totalAmtrel: 0,
+        kolBreakdown: { 1: 0, 2: 0, '3+': 0 },
+        nplCount: 0,
+        cabangList: [],
+      },
+      cabangBreakdown: [],
+      parsedAt: new Date().toISOString(),
+    }
+  }
+
+  const headerRow = data[headerRowIndex].map(norm)
+  const colIdx = (candidates) => {
+    for (const cand of candidates) {
+      const idx = headerRow.findIndex((h) => h === cand || h.includes(cand))
+      if (idx !== -1) return idx
+    }
+    return -1
+  }
+
+  const idxTanggal = colIdx(['TANGGAL'])
+  const idxTipeProduk = colIdx(['TIPE PRODUK'])
+  const idxNama = colIdx(['NAMA'])
+  const idxNoRek = colIdx(['NO. REKENING', 'NO REKENING', 'NO.REKENING', 'NO REK', 'NO. REK'])
+  const idxBakiDebet = colIdx(['BAKI DEBET'])
+  const idxPlafond = colIdx(['PLAFOND'])
+  const idxAmtrel = colIdx(['AMTREL'])
+  const idxKOL = colIdx(['KOL'])
+  const idxPlNpl = colIdx(['PL/NPL', 'PL NPL', 'PLNPL'])
+  const idxCabang = colIdx(['CABANG'])
+  const idxKanwil = colIdx(['KANWIL', 'KANWIL/AREA', 'KANWIL AREA', 'KANWIL / AREA'])
+  const idxTunggakan = colIdx(['TUNGGAKAN', 'TUNGGAKAN (RP)', 'TUNGGAKAN RP'])
+
+  const parseDateISO = (value) => {
+    if (!value) return null
+    if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
+    if (typeof value === 'number') {
+      const d = excelDateToJS(value)
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+    }
+    const d = new Date(String(value))
+    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+  }
+
+  const PRODUCT_MATCHERS = [
+    'B8. KUMK PRK',
+    'BZ. KUMK PRK',
+    'LL. SME - KMK PRK',
+    'M8. SME - KMK PRK SPBU',
+    'EY. KUMK KMK PRK SPBU PERTAMINA',
+    'K4. PRK - KUR',
+  ].map((s) => s.toLowerCase())
+
+  const rows = []
+  let idasDate = null
+
+  for (let i = headerRowIndex + 1; i < data.length; i++) {
+    const row = data[i]
+    if (!Array.isArray(row) || row.length === 0) continue
+
+    const tipeProduk = String(row[idxTipeProduk] || '').trim()
+    if (!tipeProduk) continue
+
+    const tipeLower = tipeProduk.toLowerCase()
+    const isMatch = PRODUCT_MATCHERS.some((m) => tipeLower.includes(m))
+    if (!isMatch) continue
+
+    const tanggalISO = idxTanggal !== -1 ? parseDateISO(row[idxTanggal]) : null
+    if (!idasDate && tanggalISO) idasDate = tanggalISO
+
+    const bakiDebet = idxBakiDebet !== -1 ? parseNumber(row[idxBakiDebet]) : 0
+    const plafond = idxPlafond !== -1 ? parseNumber(row[idxPlafond]) : 0
+    const amtrel = idxAmtrel !== -1 ? parseNumber(row[idxAmtrel]) : 0
+    const tunggakan = idxTunggakan !== -1 ? parseNumber(row[idxTunggakan]) : 0
+
+    rows.push({
+      tanggal: tanggalISO,
+      tipeProduk,
+      nama: String(row[idxNama] || '').trim(),
+      noRekening: String(row[idxNoRek] || '').trim(),
+      bakiDebet,
+      plafond,
+      amtrel,
+      kol: String(row[idxKOL] || '').trim(),
+      plNpl: String(row[idxPlNpl] || '').trim(),
+      cabang: String(row[idxCabang] || '').trim(),
+      kanwil: String(row[idxKanwil] || '').trim(),
+      tunggakan,
+    })
+  }
+
+  const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
+  let nplCount = 0
+  const cabangSet = new Set()
+  const cabangMap = new Map()
+
+  for (const r of rows) {
+    const kolNum = parseInt(String(r.kol || '').replace(/[^\d]/g, ''), 10)
+    if (!Number.isNaN(kolNum)) {
+      if (kolNum <= 1) kolBreakdown[1] += 1
+      else if (kolNum === 2) kolBreakdown[2] += 1
+      else kolBreakdown['3+'] += 1
+    }
+    if (String(r.plNpl || '').toUpperCase().includes('NPL')) nplCount += 1
+
+    if (r.cabang) cabangSet.add(r.cabang)
+    const key = `${r.cabang}__${r.kanwil}`
+    if (!cabangMap.has(key)) {
+      cabangMap.set(key, { cabang: r.cabang, kanwil: r.kanwil, count: 0, totalBakiDebet: 0 })
+    }
+    const item = cabangMap.get(key)
+    item.count += 1
+    item.totalBakiDebet += r.bakiDebet || 0
+  }
+
+  const cabangBreakdown = Array.from(cabangMap.values())
+    .sort((a, b) => (b.totalBakiDebet || 0) - (a.totalBakiDebet || 0))
+
+  const summary = {
+    totalDebitur: rows.length,
+    totalBakiDebet: rows.reduce((s, r) => s + (r.bakiDebet || 0), 0),
+    totalPlafond: rows.reduce((s, r) => s + (r.plafond || 0), 0),
+    totalAmtrel: rows.reduce((s, r) => s + (r.amtrel || 0), 0),
+    kolBreakdown,
+    nplCount,
+    cabangList: Array.from(cabangSet).sort(),
+  }
+
+  return {
+    type: 'prk_spbu',
+    idasDate,
+    rows,
+    summary,
+    cabangBreakdown,
+    parsedAt: new Date().toISOString(),
+  }
+}
+
+export function parseMonitoringSPBU(workbook) {
+  const sheetName = workbook.SheetNames.find((n) => String(n || '').trim().toLowerCase() === 'monitoring spbu')
+    || workbook.SheetNames.find((n) => String(n || '').toLowerCase().includes('monitoring spbu'))
+
+  if (!sheetName) {
+    return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
+  }
+
+  const sheet = workbook.Sheets[sheetName]
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+  const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
+  const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => ['NAMA', 'CABANG'].includes(norm(c))))
+  if (headerRowIndex === -1) {
+    return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
+  }
+
+  const headerRow = data[headerRowIndex].map(norm)
+  const colIdx = (candidates) => {
+    for (const cand of candidates) {
+      const idx = headerRow.findIndex((h) => h === cand || h.includes(cand))
+      if (idx !== -1) return idx
+    }
+    return -1
+  }
+
+  const idxNoDebitur = colIdx(['NO DEBITUR', 'NO. DEBITUR', 'NO NASABAH', 'NO. NASABAH'])
+  const idxNama = colIdx(['NAMA'])
+  const idxCabang = colIdx(['CABANG'])
+  const idxPlafon = colIdx(['PLAFON', 'PLAFOND'])
+  const idxTglAkad = colIdx(['TGL AKAD', 'TANGGAL AKAD'])
+  const idxTglJt = colIdx(['TGL JATUH TEMPO', 'TGL JT TEMPO', 'JATUH TEMPO'])
+  const idxAgunan = colIdx(['AGUNAN'])
+  const idxCMS = colIdx(['CMS'])
+  const idxEDC = colIdx(['EDC'])
+  const idxQRIS = colIdx(['QRIS'])
+
+  const parseDateISO = (value) => {
+    if (!value) return null
+    if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
+    if (typeof value === 'number') {
+      const d = excelDateToJS(value)
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+    }
+    const d = new Date(String(value))
+    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+  }
+
+  const parseBoolFlag = (value) => {
+    const s = String(value || '').trim().toLowerCase()
+    return s === 'v' || s === '✓' || s === 'x' || s === '1' || s === 'ya' || s === 'y' || s === 'yes' || s === 'true'
+  }
+
+  const rows = []
+
+  for (let i = headerRowIndex + 1; i < data.length; i++) {
+    const row = data[i]
+    if (!Array.isArray(row) || row.length === 0) continue
+
+    const nama = String(row[idxNama] || '').trim()
+    const cabang = String(row[idxCabang] || '').trim()
+    const noDebitur = idxNoDebitur !== -1 ? String(row[idxNoDebitur] || '').trim() : ''
+    const plafon = idxPlafon !== -1 ? parseNumber(row[idxPlafon]) : 0
+    const tglAkad = idxTglAkad !== -1 ? parseDateISO(row[idxTglAkad]) : null
+    const tglJatuhTempo = idxTglJt !== -1 ? parseDateISO(row[idxTglJt]) : null
+    const agunan = idxAgunan !== -1 ? String(row[idxAgunan] || '').trim() : ''
+    const cms = idxCMS !== -1 ? parseBoolFlag(row[idxCMS]) : false
+    const edc = idxEDC !== -1 ? parseBoolFlag(row[idxEDC]) : false
+    const qris = idxQRIS !== -1 ? parseBoolFlag(row[idxQRIS]) : false
+
+    if (!nama && !noDebitur) continue
+
+    rows.push({
+      noDebitur,
+      nama,
+      cabang,
+      plafon,
+      tglAkad,
+      tglJatuhTempo,
+      agunan,
+      cms,
+      edc,
+      qris,
+    })
+  }
+
+  return {
+    type: 'prk_spbu_manual',
+    rows,
+    parsedAt: new Date().toISOString(),
+  }
+}
+
+// ============================================
 // HELPERS
 // ============================================
 

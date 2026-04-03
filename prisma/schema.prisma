@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  role         String   @default("viewer") // viewer | editor | approver | admin
+  kanwil       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Memo {
+  id            String    @id @default(cuid())
+  nomorMemo     String    @default("") // e.g. 0042/M/BBD/CPD/III/2026 — filled manually or left blank in draft
+  category      String    @default("general") // general | izin_prinsip
+  perihal       String    @default("")
+  kepada        String    @default("[]") // JSON: [{ division: string, department?: string }]
+  dari          String    @default("")   // e.g. "Business Banking Division (BBD)"
+  tanggalMemo   DateTime  @default(now())
+  konten        String    @default("") // rich text HTML from Tiptap
+  lampiranList  String    @default("[]") // JSON: string[] — numbered lampiran items in document
+  tembusan      String    @default("[]") // JSON: string[] — CC list
+  metadata      String    @default("{}") // JSON: category-specific fields
+  // izin_prinsip metadata keys:
+  // namaDebitur, jenisIzinPrinsip, jenisKredit, plafond, jangkaWaktu,
+  // nomorMemoKC, nomorMemoResponse, keputusan, kanwil, cabang
+  status        String    @default("draft") // draft | review | approved | distributed
+  createdBy     String    @default("") // User.username
+  reviewedBy    String?
+  approvedBy    String?
+  distributedBy String?
+  distributedTo String    @default("[]") // JSON: kanwil codes
+  attachments   String    @default("[]") // JSON: storage keys for uploaded files
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  reviewedAt    DateTime?
+  approvedAt    DateTime?
+  distributedAt DateTime?
+}

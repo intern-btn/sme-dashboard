@@ -1,14 +1,17 @@
 import { handleUpload } from '@vercel/blob/client'
 import { NextResponse } from 'next/server'
-import { requireAuth } from '../../../../lib/auth.js'
+import { getToken } from 'next-auth/jwt'
 
 export const runtime = 'edge'
 
 export async function POST(request) {
   try {
-    const authenticated = await requireAuth(request)
-    if (!authenticated) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (token.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()

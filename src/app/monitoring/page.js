@@ -1,0 +1,139 @@
+'use client'
+
+import { useState } from 'react'
+import { useKeyboardNav } from '../hooks/useKeyboardNav'
+import { useDataFetch } from '../hooks/useDataFetch'
+import Dashboard from '../components/Dashboard'
+import KanwilDetail from '../components/KanwilDetail'
+import Realisasi from '../components/Realisasi'
+import ProgressIndicator from '../components/ProgressIndicator'
+import Sidebar from '../components/Sidebar'
+
+export default function MonitoringBrowserPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Fetch data once on load only (no auto-refresh since data is static until new upload)
+  const { data: nplData, metadata: nplMetadata, loading: nplLoading, noData: nplNoData } = useDataFetch('npl', null)
+  const { data: kol2Data, metadata: kol2Metadata, loading: kol2Loading, noData: kol2NoData } = useDataFetch('kol2', null)
+  const { data: realisasiData, loading: realisasiLoading, noData: realisasiNoData } = useDataFetch('realisasi', null)
+  const { data: realisasiKreditData, metadata: realisasiKreditMetadata, loading: realisasiKreditLoading, noData: realisasiKreditNoData } = useDataFetch('realisasi_kredit', null)
+  const { data: posisiKreditData, metadata: posisiKreditMetadata, loading: posisiKreditLoading, noData: posisiKreditNoData } = useDataFetch('posisi_kredit', null)
+
+  const { currentPage, pageName, goToPage } = useKeyboardNav()
+
+  const renderPage = () => {
+    if (currentPage === -1) {
+      if (realisasiLoading) return <LoadingScreen text="Loading realisasi data..." />
+      if (realisasiNoData || !realisasiData) return <NoDataScreen text="Belum ada data realisasi" />
+      return <Realisasi data={realisasiData} />
+    }
+
+    if (currentPage === 0) {
+      const isLoading = nplLoading || kol2Loading || realisasiKreditLoading || posisiKreditLoading
+      if (isLoading) return <LoadingScreen text="Loading dashboard data..." />
+      return (
+        <Dashboard
+          nplData={nplData}
+          kol2Data={kol2Data}
+          realisasiKreditData={realisasiKreditData}
+          posisiKreditData={posisiKreditData}
+          nplMetadata={nplMetadata}
+          kol2Metadata={kol2Metadata}
+          realisasiKreditMetadata={realisasiKreditMetadata}
+          posisiKreditMetadata={posisiKreditMetadata}
+        />
+      )
+    }
+
+    if (currentPage >= 1 && currentPage <= 9) {
+      const isLoading = nplLoading || kol2Loading || realisasiKreditLoading || posisiKreditLoading
+      if (isLoading) return <LoadingScreen text="Loading kanwil data..." />
+      return (
+        <KanwilDetail
+          nplData={nplData}
+          kol2Data={kol2Data}
+          realisasiKreditData={realisasiKreditData}
+          posisiKreditData={posisiKreditData}
+          kanwilIndex={currentPage}
+          nplMetadata={nplMetadata}
+          kol2Metadata={kol2Metadata}
+          realisasiKreditMetadata={realisasiKreditMetadata}
+          posisiKreditMetadata={posisiKreditMetadata}
+        />
+      )
+    }
+
+    return <div className="min-h-screen flex items-center justify-center text-gray-400">Invalid page</div>
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <main className="relative flex">
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={goToPage}
+          metadata={nplMetadata}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* Hamburger Menu Button (Mobile only) */}
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="fixed top-4 left-4 z-30 lg:hidden bg-white p-2 rounded-lg shadow-lg border border-gray-200"
+          style={{ backgroundColor: '#003d7a' }}
+          aria-label="Open menu"
+          type="button"
+        >
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <div className="flex-1 lg:ml-64 min-h-screen bg-gray-50">
+          <div className="transition-all duration-300">
+            {renderPage()}
+          </div>
+        </div>
+
+        <ProgressIndicator currentPage={currentPage} pageName={pageName()} onNavigate={goToPage} />
+      </main>
+    </div>
+  )
+}
+
+function LoadingScreen({ text }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="relative">
+        <div className="w-24 h-24 border-4 rounded-full animate-spin" style={{ borderColor: '#e5e7eb', borderTopColor: '#003d7a' }}></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <svg className="w-12 h-12" style={{ color: '#003d7a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+      </div>
+      <div className="mt-6 text-2xl text-gray-700 font-semibold">{text}</div>
+    </div>
+  )
+}
+
+function NoDataScreen({ text }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <svg className="w-32 h-32 mb-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <div className="text-3xl text-gray-700 mb-4 font-bold">{text}</div>
+      <div className="text-gray-600 text-center max-w-md bg-gray-50 p-6 rounded-lg border border-gray-300">
+        <p className="mb-4 font-semibold uppercase text-sm" style={{ color: '#003d7a' }}>Untuk menampilkan data:</p>
+        <ol className="text-left list-decimal list-inside space-y-2">
+          <li>Buka <a href="/admin" className="hover:underline font-medium" style={{ color: '#003d7a' }}>Admin Portal</a></li>
+          <li>Upload 5 file Excel (.xlsx)</li>
+          <li>Tunggu proses selesai</li>
+          <li>Dashboard akan auto-refresh</li>
+        </ol>
+      </div>
+    </div>
+  )
+}

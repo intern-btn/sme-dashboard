@@ -1,34 +1,22 @@
 import { NextResponse } from 'next/server'
+import { getStorage } from '../../../lib/storage/index.js'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
+    const storage = getStorage()
 
-    const fetchMeta = async (type) => {
-      try {
-        const response = await fetch(`${blobBaseUrl}/${type}_metadata.json`, {
-          cache: 'no-store'
-        })
-        if (response.ok) {
-          return await response.json()
-        }
-      } catch {
-        // Ignore errors
-      }
-      return null
-    }
-
-    const [npl, kol2, realisasi, realisasi_kredit, posisi_kredit] = await Promise.all([
-      fetchMeta('npl'),
-      fetchMeta('kol2'),
-      fetchMeta('realisasi'),
-      fetchMeta('realisasi_kredit'),
-      fetchMeta('posisi_kredit')
+    const [npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu] = await Promise.all([
+      storage.get('npl_metadata.json'),
+      storage.get('kol2_metadata.json'),
+      storage.get('realisasi_metadata.json'),
+      storage.get('realisasi_kredit_metadata.json'),
+      storage.get('posisi_kredit_metadata.json'),
+      storage.get('prk_spbu_metadata.json'),
     ])
 
-    return NextResponse.json({ npl, kol2, realisasi, realisasi_kredit, posisi_kredit })
+    return NextResponse.json({ npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

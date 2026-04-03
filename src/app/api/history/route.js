@@ -1,29 +1,23 @@
 import { NextResponse } from 'next/server'
+import { getStorage } from '../../../lib/storage/index.js'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const blobBaseUrl = process.env.BLOB_BASE_URL || 'https://srcabmhmmkl5ishw.public.blob.vercel-storage.com'
+    const storage = getStorage()
+    const historyIndex = await storage.get('history_index.json')
 
-    // Fetch history index
-    const response = await fetch(`${blobBaseUrl}/history_index.json`, {
-      cache: 'no-store'
-    })
-
-    if (!response.ok) {
+    if (!historyIndex) {
       return NextResponse.json({ history: [] })
     }
 
-    const historyIndex = await response.json()
-
-    // Get the last 20 entries, sorted by date descending
     const sortedHistory = (historyIndex.entries || [])
       .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate))
       .slice(0, 20)
 
     return NextResponse.json({ history: sortedHistory })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ history: [] })
   }
 }

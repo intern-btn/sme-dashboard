@@ -1,4 +1,3 @@
-import { put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import {
@@ -8,43 +7,51 @@ import {
   parseRealisasiKreditExcel,
   parsePosisiKreditExcel
 } from '../../../../lib/excel-parsers.js'
-import { requireAuth } from '../../../../lib/auth.js'
+import { getStorage } from '../../../../lib/storage/index.js'
+import { getToken } from 'next-auth/jwt'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request) {
   try {
-    const authenticated = await requireAuth(request)
-    if (!authenticated) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json({ error: 'Blob storage not configured' }, { status: 500 })
+    if (token.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { blobUrl } = await request.json()
+    let buffer
 
-    if (!blobUrl) {
-      return NextResponse.json({ error: 'Blob URL is required' }, { status: 400 })
+    const contentType = request.headers.get('content-type') || ''
+
+    if (contentType.includes('multipart/form-data')) {
+      // Self-hosted path: file uploaded directly as multipart form data
+      const formData = await request.formData()
+      const file = formData.get('file')
+      if (!file) {
+        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      }
+      buffer = Buffer.from(await file.arrayBuffer())
+    } else {
+      // Vercel Blob path: file was uploaded to blob, we receive its URL
+      const { blobUrl } = await request.json()
+      if (!blobUrl) {
+        return NextResponse.json({ error: 'blobUrl or file is required' }, { status: 400 })
+      }
+      const response = await fetch(blobUrl)
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.statusText}`)
+      }
+      buffer = Buffer.from(await response.arrayBuffer())
     }
-
-    // Download file from Vercel Blob
-    console.log('Downloading file from:', blobUrl)
-    const response = await fetch(blobUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to download file: ${response.statusText}`)
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
 
     // Parse multi-sheet Excel
     const workbook = XLSX.read(buffer, { type: 'buffer' })
     console.log('Found sheets:', workbook.SheetNames)
 
-    // Map sheet names to data types using flexible pattern matching
     const sheetMap = {
       npl: null,
       kol2: null,
@@ -54,15 +61,13 @@ export async function POST(request) {
     }
 
     const patterns = {
-      // Specific sheet name patterns based on BTN's Excel structure
-      npl: /^49c/i,                    // 49c. NPLKC (produk)
-      kol2: /^49b/i,                   // 49b. Kol 2 KC (produk)
-      realisasi: /^22a/i,              // 22a. Real sub prdk
-      realisasi_kredit: /^44a1/i,      // 44a1.Real Komit Produk
-      posisi_kredit: /^44b/i           // 44b. Posisi KC
+      npl: /^49c/i,
+      kol2: /^49b/i,
+      realisasi: /^22a/i,
+      realisasi_kredit: /^44a1/i,
+      posisi_kredit: /^44b/i
     }
 
-    // Match sheets to data types
     for (const sheetName of workbook.SheetNames) {
       if (patterns.realisasi_kredit.test(sheetName)) {
         sheetMap.realisasi_kredit = sheetName
@@ -79,255 +84,97 @@ export async function POST(request) {
 
     console.log('Sheet mapping:', sheetMap)
 
-    // Parse each sheet with the appropriate parser
     let nplData, kol2Data, realisasiData, realisasiKreditData, posisiKreditData
     const parsedSheets = []
     const missingSheets = []
 
+    const parseSheet = (sheetName) => ({
+      SheetNames: [sheetName],
+      Sheets: { [sheetName]: workbook.Sheets[sheetName] }
+    })
+
     if (sheetMap.npl) {
-      const singleSheetWorkbook = {
-        SheetNames: [sheetMap.npl],
-        Sheets: { [sheetMap.npl]: workbook.Sheets[sheetMap.npl] }
-      }
-      nplData = parseNPLExcel(singleSheetWorkbook)
+      nplData = parseNPLExcel(parseSheet(sheetMap.npl))
       parsedSheets.push('NPL')
-    } else {
-      missingSheets.push('NPL')
-    }
+    } else missingSheets.push('NPL')
 
     if (sheetMap.kol2) {
-      const singleSheetWorkbook = {
-        SheetNames: [sheetMap.kol2],
-        Sheets: { [sheetMap.kol2]: workbook.Sheets[sheetMap.kol2] }
-      }
-      kol2Data = parseKOL2Excel(singleSheetWorkbook)
+      kol2Data = parseKOL2Excel(parseSheet(sheetMap.kol2))
       parsedSheets.push('KOL2')
-    } else {
-      missingSheets.push('KOL2')
-    }
+    } else missingSheets.push('KOL2')
 
     if (sheetMap.realisasi) {
-      const singleSheetWorkbook = {
-        SheetNames: [sheetMap.realisasi],
-        Sheets: { [sheetMap.realisasi]: workbook.Sheets[sheetMap.realisasi] }
-      }
-      realisasiData = parseRealisasiExcel(singleSheetWorkbook)
+      realisasiData = parseRealisasiExcel(parseSheet(sheetMap.realisasi))
       parsedSheets.push('Realisasi')
-    } else {
-      missingSheets.push('Realisasi')
-    }
+    } else missingSheets.push('Realisasi')
 
     if (sheetMap.realisasi_kredit) {
-      const singleSheetWorkbook = {
-        SheetNames: [sheetMap.realisasi_kredit],
-        Sheets: { [sheetMap.realisasi_kredit]: workbook.Sheets[sheetMap.realisasi_kredit] }
-      }
-      realisasiKreditData = parseRealisasiKreditExcel(singleSheetWorkbook)
+      realisasiKreditData = parseRealisasiKreditExcel(parseSheet(sheetMap.realisasi_kredit))
       parsedSheets.push('Realisasi Kredit')
-    } else {
-      missingSheets.push('Realisasi Kredit')
-    }
+    } else missingSheets.push('Realisasi Kredit')
 
     if (sheetMap.posisi_kredit) {
-      const singleSheetWorkbook = {
-        SheetNames: [sheetMap.posisi_kredit],
-        Sheets: { [sheetMap.posisi_kredit]: workbook.Sheets[sheetMap.posisi_kredit] }
-      }
-      posisiKreditData = parsePosisiKreditExcel(singleSheetWorkbook)
+      posisiKreditData = parsePosisiKreditExcel(parseSheet(sheetMap.posisi_kredit))
       parsedSheets.push('Posisi Kredit')
-    } else {
-      missingSheets.push('Posisi Kredit')
-    }
+    } else missingSheets.push('Posisi Kredit')
 
-    // Get month info from first available parsed data
     const monthInfo = nplData?.monthInfo || kol2Data?.monthInfo || realisasiData?.monthInfo ||
                       realisasiKreditData?.monthInfo || posisiKreditData?.monthInfo
 
     const uploadDate = new Date().toISOString()
     const uploadId = Date.now().toString()
+    const storage = getStorage()
 
-    // Upload LATEST versions (for dashboard display)
-    let blobBaseUrl = process.env.BLOB_BASE_URL || ''
-
+    // Save latest versions
     if (nplData) {
-      const nplMetaResult = await put('npl_metadata.json', JSON.stringify({
-        filename: 'Multi-sheet Excel (NPL sheet)',
-        uploadDate,
-        fileSize: buffer.length,
-        monthInfo
-      }), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
-
-      if (!blobBaseUrl) {
-        blobBaseUrl = nplMetaResult.url.replace('/npl_metadata.json', '')
-      }
-
-      await put('npl_parsed.json', JSON.stringify(nplData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
+      await storage.put('npl_metadata.json', { filename: 'Multi-sheet Excel (NPL sheet)', uploadDate, fileSize: buffer.length, monthInfo })
+      await storage.put('npl_parsed.json', nplData)
     }
-
     if (kol2Data) {
-      await put('kol2_metadata.json', JSON.stringify({
-        filename: 'Multi-sheet Excel (KOL2 sheet)',
-        uploadDate,
-        fileSize: buffer.length,
-        monthInfo
-      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
-
-      await put('kol2_parsed.json', JSON.stringify(kol2Data), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
+      await storage.put('kol2_metadata.json', { filename: 'Multi-sheet Excel (KOL2 sheet)', uploadDate, fileSize: buffer.length, monthInfo })
+      await storage.put('kol2_parsed.json', kol2Data)
     }
-
     if (realisasiData) {
-      await put('realisasi_metadata.json', JSON.stringify({
-        filename: 'Multi-sheet Excel (Realisasi sheet)',
-        uploadDate,
-        fileSize: buffer.length,
-        monthInfo
-      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
-
-      await put('realisasi_parsed.json', JSON.stringify(realisasiData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
+      await storage.put('realisasi_metadata.json', { filename: 'Multi-sheet Excel (Realisasi sheet)', uploadDate, fileSize: buffer.length, monthInfo })
+      await storage.put('realisasi_parsed.json', realisasiData)
     }
-
     if (realisasiKreditData) {
-      await put('realisasi_kredit_metadata.json', JSON.stringify({
-        filename: 'Multi-sheet Excel (Realisasi Kredit sheet)',
-        uploadDate,
-        fileSize: buffer.length,
-        monthInfo
-      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
-
-      await put('realisasi_kredit_parsed.json', JSON.stringify(realisasiKreditData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
+      await storage.put('realisasi_kredit_metadata.json', { filename: 'Multi-sheet Excel (Realisasi Kredit sheet)', uploadDate, fileSize: buffer.length, monthInfo })
+      await storage.put('realisasi_kredit_parsed.json', realisasiKreditData)
     }
-
     if (posisiKreditData) {
-      await put('posisi_kredit_metadata.json', JSON.stringify({
-        filename: 'Multi-sheet Excel (Posisi Kredit sheet)',
-        uploadDate,
-        fileSize: buffer.length,
-        monthInfo
-      }), { access: 'public', addRandomSuffix: false, allowOverwrite: true })
-
-      await put('posisi_kredit_parsed.json', JSON.stringify(posisiKreditData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true
-      })
+      await storage.put('posisi_kredit_metadata.json', { filename: 'Multi-sheet Excel (Posisi Kredit sheet)', uploadDate, fileSize: buffer.length, monthInfo })
+      await storage.put('posisi_kredit_parsed.json', posisiKreditData)
     }
 
-    // Upload HISTORICAL versions
-    if (nplData) {
-      await put(`history/${uploadId}_npl.json`, JSON.stringify(nplData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false
-      })
-    }
+    // Save historical versions
+    if (nplData) await storage.put(`history/${uploadId}_npl.json`, nplData, { allowOverwrite: false })
+    if (kol2Data) await storage.put(`history/${uploadId}_kol2.json`, kol2Data, { allowOverwrite: false })
+    if (realisasiData) await storage.put(`history/${uploadId}_realisasi.json`, realisasiData, { allowOverwrite: false })
+    if (realisasiKreditData) await storage.put(`history/${uploadId}_realisasi_kredit.json`, realisasiKreditData, { allowOverwrite: false })
+    if (posisiKreditData) await storage.put(`history/${uploadId}_posisi_kredit.json`, posisiKreditData, { allowOverwrite: false })
 
-    if (kol2Data) {
-      await put(`history/${uploadId}_kol2.json`, JSON.stringify(kol2Data), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false
-      })
-    }
-
-    if (realisasiData) {
-      await put(`history/${uploadId}_realisasi.json`, JSON.stringify(realisasiData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false
-      })
-    }
-
-    if (realisasiKreditData) {
-      await put(`history/${uploadId}_realisasi_kredit.json`, JSON.stringify(realisasiKreditData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false
-      })
-    }
-
-    if (posisiKreditData) {
-      await put(`history/${uploadId}_posisi_kredit.json`, JSON.stringify(posisiKreditData), {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false
-      })
-    }
+    await storage.put(`history/${uploadId}_meta.json`, {
+      uploadId, uploadDate, monthInfo,
+      files: ['Multi-sheet Excel'], parsedSheets, missingSheets
+    }, { allowOverwrite: false })
 
     // Update history index
-    await put(`history/${uploadId}_meta.json`, JSON.stringify({
-      uploadId,
-      uploadDate,
-      monthInfo,
-      files: ['Multi-sheet Excel'],
-      parsedSheets,
-      missingSheets
-    }), { access: 'public', addRandomSuffix: false, allowOverwrite: false })
+    const historyIndex = (await storage.get('history_index.json')) || { entries: [] }
 
-    // Update consolidated history index
-    let historyIndex = { entries: [] }
-
-    if (blobBaseUrl) {
-      try {
-        const existingIndex = await fetch(`${blobBaseUrl}/history_index.json`, { cache: 'no-store' })
-        if (existingIndex.ok) {
-          historyIndex = await existingIndex.json()
-        }
-      } catch {
-        // Start fresh if no index exists
-      }
-    }
-
-    const newEntry = {
-      uploadId,
-      uploadDate,
-      monthInfo,
-      files: ['Multi-sheet Excel'],
-      parsedSheets,
-      missingSheets
-    }
-
-    historyIndex.entries.push(newEntry)
-
-    // Keep only the last 100 entries
+    historyIndex.entries.push({ uploadId, uploadDate, monthInfo, files: ['Multi-sheet Excel'], parsedSheets, missingSheets })
     historyIndex.entries = historyIndex.entries
       .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate))
       .slice(0, 100)
 
-    await put('history_index.json', JSON.stringify(historyIndex), {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true
-    })
+    await storage.put('history_index.json', historyIndex)
 
     return NextResponse.json({
       success: true,
       message: parsedSheets.length > 0
         ? `Successfully parsed ${parsedSheets.length} sheet(s)`
         : 'No recognized sheets found',
-      uploadDate,
-      monthInfo,
-      parsedSheets,
-      missingSheets,
+      uploadDate, monthInfo, parsedSheets, missingSheets,
       stats: {
         nplKanwil: nplData?.kanwilData?.length || 0,
         nplCabang: nplData?.cabangData?.length || 0,

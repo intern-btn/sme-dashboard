@@ -1,70 +1,136 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { upload } from '@vercel/blob/client'
+import AppHeader from '../components/AppHeader'
+
+// ---------------------------------------------------------------------------
+// Client-side SPBU parsers (mirror of server-side excel-parsers.js functions)
+// XLSX is loaded dynamically inside handleSPBUUpload — not bundled at page load
+// ---------------------------------------------------------------------------
+
+const SPBU_PRODUCT_MATCHERS = [
+  'b8. kumk prk', 'bz. kumk prk', 'll. sme - kmk prk',
+  'm8. sme - kmk prk spbu', 'ey. kumk kmk prk spbu pertamina', 'k4. prk - kur',
+]
+
+function excelSerialToISO(serial) {
+  if (!serial || typeof serial !== 'number') return null
+  const utc = new Date(Date.UTC(1899, 11, 30) + serial * 86400000)
+  return isNaN(utc) ? null : utc.toISOString().split('T')[0]
+}
+
+function parseDateISO(value) {
+  if (!value) return null
+  if (value instanceof Date) return isNaN(value) ? null : value.toISOString().split('T')[0]
+  if (typeof value === 'number') return excelSerialToISO(value)
+  const d = new Date(String(value))
+  return isNaN(d) ? null : d.toISOString().split('T')[0]
+}
+
+function parseNum(v) { return parseFloat(String(v || '').replace(/[^0-9.-]/g, '')) || 0 }
+function normStr(v) { return String(v || '').trim().toUpperCase().replace(/\s+/g, ' ') }
+
+function clientParseIDAS(XLSX, workbook) {
+  const empty = { type: 'prk_spbu', idasDate: null, rows: [], summary: { totalDebitur: 0, totalBakiDebet: 0, totalPlafond: 0, totalAmtrel: 0, kolBreakdown: { 1: 0, 2: 0, '3+': 0 }, nplCount: 0, cabangList: [] }, cabangBreakdown: [], parsedAt: new Date().toISOString() }
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  if (!sheet) return empty
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+  const hIdx = data.findIndex(r => Array.isArray(r) && r.some(c => normStr(c).includes('TIPE PRODUK')))
+  if (hIdx === -1) return empty
+
+  const hRow = data[hIdx].map(normStr)
+  const col = (...cands) => { for (const c of cands) { const i = hRow.findIndex(h => h === c || h.includes(c)); if (i !== -1) return i } return -1 }
+  const iDate = col('TANGGAL'), iTipe = col('TIPE PRODUK'), iNama = col('NAMA')
+  const iRek = col('NO. REKENING', 'NO REKENING', 'NO REK'), iBD = col('BAKI DEBET')
+  const iPL = col('PLAFOND'), iAM = col('AMTREL'), iKOL = col('KOL')
+  const iPN = col('PL/NPL', 'PL NPL'), iCab = col('CABANG'), iKan = col('KANWIL')
+  const iTung = col('TUNGGAKAN')
+
+  const rows = []; let idasDate = null
+  for (let i = hIdx + 1; i < data.length; i++) {
+    const r = data[i]
+    if (!Array.isArray(r) || !r.length) continue
+    const tipe = String(r[iTipe] || '').trim()
+    if (!tipe) continue
+    const tipeLow = tipe.toLowerCase()
+    if (!SPBU_PRODUCT_MATCHERS.some(m => tipeLow.includes(m))) continue
+    const tgl = iDate !== -1 ? parseDateISO(r[iDate]) : null
+    if (!idasDate && tgl) idasDate = tgl
+    rows.push({ tanggal: tgl, tipeProduk: tipe, nama: String(r[iNama] || '').trim(), noRekening: String(r[iRek] || '').trim(), bakiDebet: iBD !== -1 ? parseNum(r[iBD]) : 0, plafond: iPL !== -1 ? parseNum(r[iPL]) : 0, amtrel: iAM !== -1 ? parseNum(r[iAM]) : 0, kol: String(r[iKOL] || '').trim(), plNpl: String(r[iPN] || '').trim(), cabang: String(r[iCab] || '').trim(), kanwil: String(r[iKan] || '').trim(), tunggakan: iTung !== -1 ? parseNum(r[iTung]) : 0 })
+  }
+
+  const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
+  let nplCount = 0; const cabSet = new Set(); const cabMap = new Map()
+  for (const r of rows) {
+    const k = parseInt(String(r.kol || '').replace(/\D/g, ''), 10)
+    if (!isNaN(k)) { if (k <= 1) kolBreakdown[1]++; else if (k === 2) kolBreakdown[2]++; else kolBreakdown['3+']++ }
+    if (String(r.plNpl).toUpperCase().includes('NPL')) nplCount++
+    if (r.cabang) cabSet.add(r.cabang)
+    const key = `${r.cabang}__${r.kanwil}`
+    if (!cabMap.has(key)) cabMap.set(key, { cabang: r.cabang, kanwil: r.kanwil, count: 0, totalBakiDebet: 0 })
+    const e = cabMap.get(key); e.count++; e.totalBakiDebet += r.bakiDebet || 0
+  }
+  return { type: 'prk_spbu', idasDate, rows, summary: { totalDebitur: rows.length, totalBakiDebet: rows.reduce((s, r) => s + r.bakiDebet, 0), totalPlafond: rows.reduce((s, r) => s + r.plafond, 0), totalAmtrel: rows.reduce((s, r) => s + r.amtrel, 0), kolBreakdown, nplCount, cabangList: [...cabSet].sort() }, cabangBreakdown: [...cabMap.values()].sort((a, b) => b.totalBakiDebet - a.totalBakiDebet), parsedAt: new Date().toISOString() }
+}
+
+function clientParseManual(XLSX, workbook) {
+  const sheetName = workbook.SheetNames.find(n => String(n || '').trim().toLowerCase() === 'monitoring spbu')
+    || workbook.SheetNames.find(n => String(n || '').toLowerCase().includes('monitoring spbu'))
+  if (!sheetName) return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const hIdx = data.findIndex(r => Array.isArray(r) && r.some(c => ['NAMA', 'CABANG'].includes(normStr(c))))
+  if (hIdx === -1) return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
+  const hRow = data[hIdx].map(normStr)
+  const col = (...cands) => { for (const c of cands) { const i = hRow.findIndex(h => h === c || h.includes(c)); if (i !== -1) return i } return -1 }
+  const iND = col('NO DEBITUR', 'NO. DEBITUR'), iNama = col('NAMA'), iCab = col('CABANG')
+  const iPL = col('PLAFON', 'PLAFOND'), iTA = col('TGL AKAD', 'TANGGAL AKAD')
+  const iJT = col('TGL JATUH TEMPO', 'JATUH TEMPO'), iAg = col('AGUNAN')
+  const iCMS = col('CMS'), iEDC = col('EDC'), iQRIS = col('QRIS')
+  const boolFlag = v => { const s = String(v || '').trim().toLowerCase(); return ['v','✓','x','1','ya','y','yes','true'].includes(s) }
+  const rows = []
+  for (let i = hIdx + 1; i < data.length; i++) {
+    const r = data[i]; if (!Array.isArray(r) || !r.length) continue
+    const nama = String(r[iNama] || '').trim(); const noDebitur = iND !== -1 ? String(r[iND] || '').trim() : ''
+    if (!nama && !noDebitur) continue
+    rows.push({ noDebitur, nama, cabang: String(r[iCab] || '').trim(), plafon: iPL !== -1 ? parseNum(r[iPL]) : 0, tglAkad: iTA !== -1 ? parseDateISO(r[iTA]) : null, tglJatuhTempo: iJT !== -1 ? parseDateISO(r[iJT]) : null, agunan: iAg !== -1 ? String(r[iAg] || '').trim() : '', hasCMS: iCMS !== -1 ? boolFlag(r[iCMS]) : false, hasEDC: iEDC !== -1 ? boolFlag(r[iEDC]) : false, hasQRIS: iQRIS !== -1 ? boolFlag(r[iQRIS]) : false })
+  }
+  return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
+}
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState('')
-  const [authError, setAuthError] = useState('')
+  const [user, setUser] = useState(null)
   const [nplFile, setNplFile] = useState(null)
   const [kol2File, setKol2File] = useState(null)
   const [realisasiFile, setRealisasiFile] = useState(null)
   const [realisasiKreditFile, setRealisasiKreditFile] = useState(null)
   const [posisiKreditFile, setPosisiKreditFile] = useState(null)
   const [multiSheetFile, setMultiSheetFile] = useState(null)
+  const [spbuIdasFile, setSpbuIdasFile] = useState(null)
+  const [spbuManualFile, setSpbuManualFile] = useState(null)
   const [uploadMode, setUploadMode] = useState('separate') // 'separate' | 'multi'
+  const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'spbu'
   const [uploading, setUploading] = useState(false)
+  const [spbuUploading, setSpbuUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [spbuMessage, setSpbuMessage] = useState('')
+  const [spbuError, setSpbuError] = useState('')
   const [uploadStats, setUploadStats] = useState(null)
-  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null })
+  const [spbuStats, setSpbuStats] = useState(null)
+  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null, prk_spbu: null })
   const [history, setHistory] = useState([])
   const [uploadProgress, setUploadProgress] = useState(0)
 
   useEffect(() => {
-    // Verify session cookie on mount
     fetch('/api/auth/check')
-      .then(res => {
-        if (res.ok) {
-          setIsAuthenticated(true)
-          fetchCurrentStatus()
-          fetchHistory()
-        }
-      })
-      .catch(() => {})
-  }, [])
-
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setAuthError('')
-
-    try {
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      })
-
-      if (response.ok) {
-        // Session cookie is set by the server in the response
-        setIsAuthenticated(true)
-        setPassword('')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setUser(data?.user || null))
+      .catch(() => setUser(null))
+      .finally(() => {
         fetchCurrentStatus()
         fetchHistory()
-      } else {
-        const data = await response.json()
-        setAuthError(data.error || 'Password salah')
-      }
-    } catch (err) {
-      setAuthError('Authentication failed')
-    }
-  }
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    setIsAuthenticated(false)
-  }
+      })
+  }, [])
 
   const fetchCurrentStatus = async () => {
     try {
@@ -152,7 +218,6 @@ export default function AdminPage() {
       return
     }
 
-    // Validate file size (15MB limit)
     const maxSize = 15 * 1024 * 1024 // 15MB
     if (multiSheetFile.size > maxSize) {
       setError(`File terlalu besar (${(multiSheetFile.size / 1024 / 1024).toFixed(2)}MB). Maksimum 15MB`)
@@ -166,24 +231,35 @@ export default function AdminPage() {
     setUploadProgress(0)
 
     try {
-      // Step 1: Upload to Vercel Blob with progress tracking
-      const blob = await upload(multiSheetFile.name, multiSheetFile, {
-        access: 'public',
-        handleUploadUrl: '/api/upload/token',
-        onUploadProgress: (progress) => {
-          const percent = Math.round((progress.loaded / progress.total) * 100)
-          setUploadProgress(percent)
-        }
-      })
+      let processResponse
 
-      console.log('Uploaded to blob:', blob.url)
-
-      // Step 2: Process the multi-sheet Excel
-      const processResponse = await fetch('/api/upload/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blobUrl: blob.url })
-      })
+      if (process.env.NEXT_PUBLIC_USE_DIRECT_UPLOAD === 'true') {
+        // Vercel path: upload file to Vercel Blob first, then process via URL
+        const { upload } = await import('@vercel/blob/client')
+        const blob = await upload(multiSheetFile.name, multiSheetFile, {
+          access: 'public',
+          handleUploadUrl: '/api/upload/token',
+          onUploadProgress: (progress) => {
+            const percent = Math.round((progress.loaded / progress.total) * 100)
+            setUploadProgress(percent)
+          }
+        })
+        processResponse = await fetch('/api/upload/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ blobUrl: blob.url })
+        })
+      } else {
+        // Self-hosted path: POST file directly to process route
+        setUploadProgress(50)
+        const formData = new FormData()
+        formData.append('file', multiSheetFile)
+        processResponse = await fetch('/api/upload/process', {
+          method: 'POST',
+          body: formData
+        })
+        setUploadProgress(100)
+      }
 
       const result = await processResponse.json()
 
@@ -191,7 +267,6 @@ export default function AdminPage() {
         throw new Error(result.error || result.details || 'Processing failed')
       }
 
-      // Show success message with parsed sheets info
       let successMsg = 'File berhasil diupload dan diproses!'
       if (result.parsedSheets && result.parsedSheets.length > 0) {
         successMsg += ` (${result.parsedSheets.join(', ')})`
@@ -229,6 +304,38 @@ export default function AdminPage() {
     }
   }
 
+  const handleSPBUUpload = async () => {
+    if (!spbuIdasFile) { setSpbuError('Pilih File IDAS (.xlsx)'); return }
+    setSpbuUploading(true); setSpbuMessage(''); setSpbuError(''); setSpbuStats(null)
+    try {
+      // Parse entirely in the browser — avoids 10MB server body limit
+      const XLSX = await import('xlsx')
+      const parsedIdas = clientParseIDAS(XLSX, XLSX.read(new Uint8Array(await spbuIdasFile.arrayBuffer()), { type: 'array' }))
+      let parsedManual = null
+      if (spbuManualFile) {
+        parsedManual = clientParseManual(XLSX, XLSX.read(new Uint8Array(await spbuManualFile.arrayBuffer()), { type: 'array' }))
+      }
+      // POST only the filtered ~361 rows as JSON (~200KB)
+      const response = await fetch('/api/upload/process-spbu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedIdas, parsedManual, filename: spbuIdasFile.name }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || result.details || 'Upload failed')
+      setSpbuMessage('Data PRK SPBU berhasil diproses!')
+      setSpbuStats(result)
+      setSpbuIdasFile(null); setSpbuManualFile(null)
+      const ii = document.getElementById('spbu-idas-file'); if (ii) ii.value = ''
+      const mi = document.getElementById('spbu-manual-file'); if (mi) mi.value = ''
+      setTimeout(() => { fetchCurrentStatus(); fetchHistory() }, 1000)
+    } catch (err) {
+      setSpbuError(err.message)
+    } finally {
+      setSpbuUploading(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleString('id-ID', {
@@ -241,8 +348,8 @@ export default function AdminPage() {
     })
   }
 
-  // Login Screen
-  if (!isAuthenticated) {
+  // Login Screen (deprecated)
+  if (false) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 w-full max-w-md">
@@ -293,8 +400,10 @@ export default function AdminPage() {
 
   // Admin Dashboard
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader user={user} />
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -311,25 +420,44 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <a
-                href="/"
+                href="/monitoring"
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-blue-900 hover:bg-blue-50 rounded-lg transition-colors font-medium text-xs sm:text-sm border border-blue-900 text-center"
               >
                 View Dashboard
               </a>
-              <button
-                onClick={handleLogout}
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium text-xs sm:text-sm border border-gray-300"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload Form */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Data</h2>
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* Tab Bar */}
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab('monitoring')}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === 'monitoring'
+                    ? 'bg-white text-blue-900 border-b-2 border-blue-900'
+                    : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Credit Monitoring
+              </button>
+              <button
+                onClick={() => setActiveTab('spbu')}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === 'spbu'
+                    ? 'bg-white text-blue-900 border-b-2 border-blue-900'
+                    : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                PRK SPBU
+              </button>
+            </div>
+
+            <div className="p-6">
+            {activeTab === 'monitoring' && (<>
 
             {/* Mode Toggle */}
             <div className="mb-6">
@@ -509,6 +637,67 @@ export default function AdminPage() {
                 <p className="text-red-700">{error}</p>
               </div>
             )}
+
+            </>)}
+
+            {activeTab === 'spbu' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File IDAS (.xlsx) — wajib</label>
+                  <input
+                    id="spbu-idas-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setSpbuIdasFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {spbuIdasFile && <p className="mt-1 text-sm text-green-600">{spbuIdasFile.name}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File Monitoring Manual (.xlsx) — opsional</label>
+                  <input
+                    id="spbu-manual-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setSpbuManualFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {spbuManualFile && <p className="mt-1 text-sm text-green-600">{spbuManualFile.name}</p>}
+                </div>
+
+                <button
+                  onClick={handleSPBUUpload}
+                  disabled={spbuUploading || !spbuIdasFile}
+                  className={`w-full py-3 rounded-lg font-semibold text-white transition-colors ${
+                    spbuUploading || !spbuIdasFile ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'
+                  }`}
+                >
+                  {spbuUploading ? 'Processing...' : 'Upload PRK SPBU'}
+                </button>
+
+                {spbuMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-700 font-medium">{spbuMessage}</p>
+                    {spbuStats?.idasDate && (
+                      <div className="mt-2 text-sm text-green-700">
+                        <p>IDAS Date: {spbuStats.idasDate}</p>
+                        <p>Total Debitur: {spbuStats.stats?.totalDebitur || 0}</p>
+                        <p>Total Baki Debet: Rp {new Intl.NumberFormat('id-ID').format(spbuStats.stats?.totalBakiDebet || 0)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {spbuError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700">{spbuError}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            </div>
           </div>
 
           {/* Current Status */}
@@ -550,6 +739,13 @@ export default function AdminPage() {
                   {currentData.posisi_kredit ? formatDate(currentData.posisi_kredit.uploadDate) : 'No data'}
                 </div>
               </div>
+
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">PRK SPBU</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.prk_spbu ? formatDate(currentData.prk_spbu.uploadDate) : 'No data'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -580,6 +776,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

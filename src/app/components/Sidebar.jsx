@@ -59,7 +59,7 @@ export default function Sidebar({ currentPage, onNavigate, metadata, isOpen, onC
         <div className="flex items-center gap-3">
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/BTN_2024.svg/1280px-BTN_2024.svg.png" alt="BTN" className="h-8 w-auto object-contain" />
           <div>
-            <h1 className="font-bold text-white text-lg">SME Dashboard</h1>
+            <a href="/" className="font-bold text-white text-lg hover:underline">SME Dashboard</a>
             <p className="text-xs" style={{ color: '#cbd5e0' }}>Monitoring NPL & Kredit</p>
           </div>
         </div>
@@ -67,6 +67,16 @@ export default function Sidebar({ currentPage, onNavigate, metadata, isOpen, onC
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-2">
+        <a
+          href="/"
+          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors text-gray-700 hover:bg-gray-50"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9.5l9-7 9 7V21a1 1 0 01-1 1h-5v-7H10v7H5a1 1 0 01-1-1V9.5z" />
+          </svg>
+          <span className="text-sm font-medium">Beranda</span>
+        </a>
+
         {/* Main Section */}
         {menuItems.filter(i => i.section === 'main').map((item) => {
           const isActive = currentPage === item.page
