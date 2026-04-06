@@ -1,8 +1,9 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'NPL KREDIT UMKM Dashboard',
-  description: 'Real-time NPL SME monitoring dashboard',
+  title: 'SME Dashboard',
+  description: 'Business Banking Division internal dashboard',
+  icons: { icon: '/assets/btn-logo.png' },
 }
 
 export default function RootLayout({ children }) {

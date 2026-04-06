@@ -841,9 +841,75 @@ export function parsePosisiKreditExcel(workbook) {
 // ============================================
 
 export function parseIDASforSPBU(workbook) {
-  const sheetName = workbook.SheetNames[0]
+  const sheetName = 'Page1_1(2)'
   const sheet = workbook.Sheets[sheetName]
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+  // Corrected: pre-filtered IDAS export (8 fixed columns; header is always row 0)
+  // NO | TIPE PRODUK | NO. REKENING | NAMA | BAKI DEBET | PLAFOND | AMTREL | KOL
+  const header0 = Array.isArray(data[0]) ? data[0].map((c) => String(c || '').trim().toUpperCase()) : []
+  const isPrefilteredIDAS = header0.length >= 8
+    && header0[0] === 'NO'
+    && header0[1].includes('TIPE')
+    && header0[2].includes('REKENING')
+    && header0[3] === 'NAMA'
+    && header0[4].includes('BAKI')
+    && header0[5].includes('PLAF')
+    && header0[6].includes('AMTREL')
+    && header0[7].includes('KOL')
+
+  if (isPrefilteredIDAS) {
+    const rows = []
+    const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i]
+      if (!Array.isArray(row) || row.length === 0) continue
+
+      const noStr = String(row[0] || '').trim()
+      if (!noStr || !/^\d+$/.test(noStr)) continue
+
+      const tipeProduk = String(row[1] || '').trim()
+      const noRekening = String(row[2] || '').trim()
+      const nama = String(row[3] || '').trim()
+      const bakiDebet = parseNumber(row[4])
+      const plafond = parseNumber(row[5])
+      const amtrel = parseNumber(row[6])
+      const kol = String(row[7] || '').trim()
+
+      const kolNum = parseInt(String(kol).replace(/[^\d]/g, ''), 10)
+      if (!Number.isNaN(kolNum)) {
+        if (kolNum <= 1) kolBreakdown[1] += 1
+        else if (kolNum === 2) kolBreakdown[2] += 1
+        else kolBreakdown['3+'] += 1
+      }
+
+      rows.push({
+        no: Number(noStr),
+        tipeProduk,
+        noRekening,
+        nama,
+        bakiDebet,
+        plafond,
+        amtrel,
+        kol,
+      })
+    }
+
+    return {
+      type: 'prk_spbu',
+      idasDate: null,
+      rows,
+      summary: {
+        totalDebitur: rows.length,
+        totalBakiDebet: rows.reduce((s, r) => s + (r.bakiDebet || 0), 0),
+        totalPlafond: rows.reduce((s, r) => s + (r.plafond || 0), 0),
+        totalAmtrel: rows.reduce((s, r) => s + (r.amtrel || 0), 0),
+        kolBreakdown,
+      },
+      parsedAt: new Date().toISOString(),
+    }
+  }
 
   const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
   const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => norm(c) === 'TIPE PRODUK' || norm(c).includes('TIPE PRODUK')))
@@ -1004,6 +1070,59 @@ export function parseMonitoringSPBU(workbook) {
   const sheet = workbook.Sheets[sheetName]
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
 
+  // Corrected: fixed 3-row header layout (only cols 0–16 are needed), data starts at row 4.
+  // Row 1: main header (col 2 "No Debitur", col 3 "Nama")
+  // Row 3: sub header (CMS=14, EDC=15, QRIS=16)
+  const mainHdr = Array.isArray(data[1]) ? data[1] : null
+  const isFixedMaster = !!mainHdr
+    && String(mainHdr[2] || '').toLowerCase().includes('debitur')
+    && String(mainHdr[3] || '').toLowerCase().includes('nama')
+
+  if (isFixedMaster) {
+    const parseDateISO_fixed = (value) => {
+      if (!value) return null
+      if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
+      if (typeof value === 'number') {
+        const d = excelDateToJS(value)
+        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+      }
+      const d = new Date(String(value))
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+    }
+
+    const parseBoolFlag_fixed = (value) => {
+      const s = String(value || '').trim().toLowerCase()
+      return s === 'v' || s === '✓' || s === 'âœ“' || s === 'x' || s === '1' || s === 'ya' || s === 'y' || s === 'yes' || s === 'true'
+    }
+
+    const rows = []
+    for (let i = 4; i < data.length; i++) {
+      const row = data[i]
+      if (!Array.isArray(row) || row.length === 0) continue
+
+      const noStr = String(row[0] || '').trim()
+      if (!noStr || !/^\d+$/.test(noStr)) continue
+
+      rows.push({
+        no: Number(noStr),
+        cabang: String(row[1] || '').trim(),
+        noDebitur: String(row[2] || '').trim(),
+        nama: String(row[3] || '').trim(),
+        produk: String(row[4] || '').trim(),
+        telp: String(row[5] || '').trim(),
+        tglAkad: parseDateISO_fixed(row[8]),
+        tglJatuhTempo: parseDateISO_fixed(row[9]),
+        agunan: String(row[10] || '').trim(),
+        plafon: parseNumber(row[12]),
+        hasCMS: parseBoolFlag_fixed(row[14]),
+        hasEDC: parseBoolFlag_fixed(row[15]),
+        hasQRIS: parseBoolFlag_fixed(row[16]),
+      })
+    }
+
+    return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
+  }
+
   const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
   const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => ['NAMA', 'CABANG'].includes(norm(c))))
   if (headerRowIndex === -1) {
@@ -1059,9 +1178,9 @@ export function parseMonitoringSPBU(workbook) {
     const tglAkad = idxTglAkad !== -1 ? parseDateISO(row[idxTglAkad]) : null
     const tglJatuhTempo = idxTglJt !== -1 ? parseDateISO(row[idxTglJt]) : null
     const agunan = idxAgunan !== -1 ? String(row[idxAgunan] || '').trim() : ''
-    const cms = idxCMS !== -1 ? parseBoolFlag(row[idxCMS]) : false
-    const edc = idxEDC !== -1 ? parseBoolFlag(row[idxEDC]) : false
-    const qris = idxQRIS !== -1 ? parseBoolFlag(row[idxQRIS]) : false
+    const hasCMS = idxCMS !== -1 ? parseBoolFlag(row[idxCMS]) : false
+    const hasEDC = idxEDC !== -1 ? parseBoolFlag(row[idxEDC]) : false
+    const hasQRIS = idxQRIS !== -1 ? parseBoolFlag(row[idxQRIS]) : false
 
     if (!nama && !noDebitur) continue
 
@@ -1073,9 +1192,9 @@ export function parseMonitoringSPBU(workbook) {
       tglAkad,
       tglJatuhTempo,
       agunan,
-      cms,
-      edc,
-      qris,
+      hasCMS,
+      hasEDC,
+      hasQRIS,
     })
   }
 

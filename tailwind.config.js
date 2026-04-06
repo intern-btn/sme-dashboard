@@ -11,6 +11,15 @@ module.exports = {
         'btn-blue': '#003d7a',
         'btn-orange': '#e84e0f',
       },
+      keyframes: {
+        slide: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(400%)' },
+        },
+      },
+      animation: {
+        slide: 'slide 1.5s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

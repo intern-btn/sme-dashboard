@@ -86,6 +86,8 @@ export default function MemoDetailPage() {
     metadata: JSON.parse(m.metadata || '{}'),
   })
 
+  const setEditMeta = (key, val) => setEditForm(f => ({ ...f, metadata: { ...f.metadata, [key]: val } }))
+
   const doAction = async (action, payload = {}) => {
     setActionLoading(true)
     try {
@@ -164,7 +166,7 @@ export default function MemoDetailPage() {
 
   const attachments = JSON.parse(memo.attachments || '[]')
   const statusStep = STATUS_CONFIG[memo.status]?.step || 1
-  const canEdit = user && memo.status === 'draft' && (memo.createdBy === user.username || hasRole(user.role, 'admin'))
+  const canEdit = user && memo.status === 'draft' && (memo.createdBy === user.name || hasRole(user.role, 'admin'))
   const canSubmit = user && memo.status === 'draft' && hasRole(user.role, 'editor')
   const canApprove = user && memo.status === 'review' && hasRole(user.role, 'approver')
   const canDistribute = user && memo.status === 'approved' && hasRole(user.role, 'approver')
@@ -247,24 +249,252 @@ export default function MemoDetailPage() {
           )}
 
           {/* Edit form (when in edit mode) */}
-          {editMode && editForm && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">No. Memo</label>
-                <input type="text" value={editForm.nomorMemo} onChange={e => setEditForm(f => ({ ...f, nomorMemo: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {editMode && editForm && (() => {
+            const meta = editForm.metadata || {}
+            const inp = 'w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+            const lbl = 'block text-xs font-medium text-gray-600 mb-1'
+            const sec = 'text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-1 mt-1'
+            const isIP = editForm.category === 'izin_prinsip'
+
+            const updateKepada = (i, key, val) => {
+              const next = [...editForm.kepada]
+              next[i] = { ...next[i], [key]: val }
+              setEditForm(f => ({ ...f, kepada: next }))
+            }
+            const addKepada = () => setEditForm(f => ({ ...f, kepada: [...f.kepada, { division: '', department: '' }] }))
+            const removeKepada = (i) => setEditForm(f => ({ ...f, kepada: f.kepada.filter((_, idx) => idx !== i) }))
+
+            const updateRujukan = (i, key, val) => {
+              const list = Array.isArray(meta.rujukanList) ? [...meta.rujukanList] : []
+              list[i] = { ...list[i], [key]: val }
+              setEditMeta('rujukanList', list)
+            }
+            const addRujukan = () => setEditMeta('rujukanList', [...(Array.isArray(meta.rujukanList) ? meta.rujukanList : []), { nomorMemo: '', tanggal: '', perihal: '' }])
+            const removeRujukan = (i) => setEditMeta('rujukanList', (meta.rujukanList || []).filter((_, idx) => idx !== i))
+
+            const updateSimple = (arr, setter, i, val) => { const next = [...arr]; next[i] = val; setter(next) }
+            const addSimple = (arr, setter) => setter([...arr, ''])
+            const removeSimple = (arr, setter, i) => setter(arr.filter((_, idx) => idx !== i))
+
+            const lampiranArr = Array.isArray(editForm.lampiranList) ? editForm.lampiranList : []
+            const tembusanArr = Array.isArray(editForm.tembusan) ? editForm.tembusan : []
+            const setLampiran = (v) => setEditForm(f => ({ ...f, lampiranList: v }))
+            const setTembusan = (v) => setEditForm(f => ({ ...f, tembusan: v }))
+
+            const RUJUKAN_JENIS = [
+              { value: 'menunjuk', label: 'Menunjuk dan menindaklanjuti' },
+              { value: 'berdasarkan', label: 'Berdasarkan' },
+              { value: 'merujuk', label: 'Merujuk pada' },
+            ]
+            const KALIMAT_OPTIONS = [
+              { value: '', label: '(tidak ada)' },
+              { value: 'disampaikan', label: 'dengan ini kami sampaikan hal-hal berikut:' },
+              { value: 'dimohon', label: 'dengan ini kami mohon:' },
+              { value: 'diundang', label: 'kami mengundang dalam rapat sebagai berikut:' },
+            ]
+
+            return (
+              <div className="space-y-3">
+                <div className={sec}>Header</div>
+
+                <div>
+                  <label className={lbl}>No. Memo</label>
+                  <input type="text" value={editForm.nomorMemo} onChange={e => setEditForm(f => ({ ...f, nomorMemo: e.target.value }))} className={inp} />
+                </div>
+
+                <div>
+                  <label className={lbl}>Tanggal</label>
+                  <input type="date" value={editForm.tanggalMemo} onChange={e => setEditForm(f => ({ ...f, tanggalMemo: e.target.value }))} className={inp} />
+                </div>
+
+                <div>
+                  <label className={lbl}>Kepada</label>
+                  <div className="space-y-1.5">
+                    {editForm.kepada.map((k, i) => (
+                      <div key={i} className="flex gap-1">
+                        <input type="text" value={k.division || ''} onChange={e => updateKepada(i, 'division', e.target.value)}
+                          placeholder="Nama Divisi" className={`${inp} flex-1`} />
+                        <input type="text" value={k.department || ''} onChange={e => updateKepada(i, 'department', e.target.value)}
+                          placeholder="Singkatan" className={`${inp} w-20`} />
+                        <button type="button" onClick={() => removeKepada(i)} className="text-red-400 hover:text-red-600 px-1 text-sm">×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={addKepada} className="mt-1.5 text-xs text-blue-600 hover:text-blue-800">+ Tambah Penerima</button>
+                </div>
+
+                <div>
+                  <label className={lbl}>Dari</label>
+                  <input type="text" value={editForm.dari} onChange={e => setEditForm(f => ({ ...f, dari: e.target.value }))} className={inp} />
+                </div>
+
+                {!isIP && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={lbl}>Divisi Pengirim</label>
+                      <input type="text" value={meta.pengirimDivision || ''} onChange={e => setEditMeta('pengirimDivision', e.target.value)} className={inp} placeholder="SME Banking Division" />
+                    </div>
+                    <div>
+                      <label className={lbl}>Singkatan</label>
+                      <input type="text" value={meta.pengirimSingkatan || ''} onChange={e => setEditMeta('pengirimSingkatan', e.target.value)} className={inp} placeholder="SMBD" />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className={lbl}>Perihal</label>
+                  <textarea value={editForm.perihal} onChange={e => setEditForm(f => ({ ...f, perihal: e.target.value }))} rows={2}
+                    className={`${inp} resize-none`} />
+                </div>
+
+                {isIP && (
+                  <>
+                    <div className={sec}>Data Kredit</div>
+                    <div>
+                      <label className={lbl}>Nama Debitur / Pemohon</label>
+                      <input type="text" value={meta.namaDebitur || ''} onChange={e => setEditMeta('namaDebitur', e.target.value)} className={inp} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Jenis Kredit</label>
+                      <input type="text" value={meta.jenisKredit || ''} onChange={e => setEditMeta('jenisKredit', e.target.value)} className={inp} placeholder="KPP Supply – Usaha Pengembang" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={lbl}>Plafond (juta Rp)</label>
+                        <input type="number" value={meta.plafond || ''} onChange={e => setEditMeta('plafond', e.target.value)} className={inp} />
+                      </div>
+                      <div>
+                        <label className={lbl}>Jangka Waktu (bln)</label>
+                        <input type="number" value={meta.jangkaWaktu || ''} onChange={e => setEditMeta('jangkaWaktu', e.target.value)} className={inp} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={lbl}>Provisi</label>
+                        <input type="text" value={meta.provisi || ''} onChange={e => setEditMeta('provisi', e.target.value)} className={inp} placeholder="0.10%" />
+                      </div>
+                      <div>
+                        <label className={lbl}>Spread Rate</label>
+                        <input type="text" value={meta.spreadRate || ''} onChange={e => setEditMeta('spreadRate', e.target.value)} className={inp} placeholder="1%" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={lbl}>LTV</label>
+                        <input type="text" value={meta.ltv || ''} onChange={e => setEditMeta('ltv', e.target.value)} className={inp} placeholder="90%" />
+                      </div>
+                      <div>
+                        <label className={lbl}>Nilai Agunan (juta Rp)</label>
+                        <input type="number" value={meta.nilaiAgunan || ''} onChange={e => setEditMeta('nilaiAgunan', e.target.value)} className={inp} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={lbl}>Jenis Simpanan Agunan</label>
+                      <input type="text" value={meta.jenisAgunan || ''} onChange={e => setEditMeta('jenisAgunan', e.target.value)} className={inp} placeholder="Giro Escrow atas nama ..." />
+                    </div>
+                    <div>
+                      <label className={lbl}>Peruntukan</label>
+                      <input type="text" value={meta.peruntukan || ''} onChange={e => setEditMeta('peruntukan', e.target.value)} className={inp} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Keputusan</label>
+                      <input type="text" value={meta.keputusan || ''} onChange={e => setEditMeta('keputusan', e.target.value)} className={inp} placeholder="dapat diproses lebih lanjut" />
+                    </div>
+                  </>
+                )}
+
+                {!isIP && (
+                  <>
+                    <div className={sec}>Pembuka & Rujukan</div>
+                    <div>
+                      <label className={lbl}>Jenis Pembuka</label>
+                      <select value={meta.rujukanJenis || 'menunjuk'} onChange={e => setEditMeta('rujukanJenis', e.target.value)} className={inp}>
+                        {RUJUKAN_JENIS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Rujukan Memo</label>
+                      <div className="space-y-2">
+                        {(meta.rujukanList || []).map((r, i) => (
+                          <div key={i} className="border border-gray-200 rounded-lg p-2 space-y-1.5 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">Rujukan {i + 1}</span>
+                              <button type="button" onClick={() => removeRujukan(i)} className="text-red-400 hover:text-red-600 text-xs">Hapus</button>
+                            </div>
+                            <input type="text" value={r.nomorMemo || ''} onChange={e => updateRujukan(i, 'nomorMemo', e.target.value)}
+                              placeholder="No. Memo" className={inp} />
+                            <input type="date" value={r.tanggal || ''} onChange={e => updateRujukan(i, 'tanggal', e.target.value)} className={inp} />
+                            <input type="text" value={r.perihal || ''} onChange={e => updateRujukan(i, 'perihal', e.target.value)}
+                              placeholder="Perihal" className={inp} />
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={addRujukan} className="mt-1.5 text-xs text-blue-600 hover:text-blue-800">+ Tambah Rujukan</button>
+                    </div>
+                    <div>
+                      <label className={lbl}>Kalimat Pengantar</label>
+                      <select value={meta.kalimatPengantar || ''} onChange={e => setEditMeta('kalimatPengantar', e.target.value)} className={inp}>
+                        {KALIMAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                <div className={sec}>Isi Memo</div>
+                <div>
+                  <MemoEditor value={editForm.konten} onChange={v => setEditForm(f => ({ ...f, konten: v }))} />
+                </div>
+
+                {!isIP && (
+                  <>
+                    <div className={sec}>PIC & Penutup</div>
+                    <div>
+                      <label className={lbl}>Nama PIC</label>
+                      <input type="text" value={meta.picNama || ''} onChange={e => setEditMeta('picNama', e.target.value)} className={inp} placeholder="Nama PIC" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={lbl}>Teams</label>
+                        <input type="text" value={meta.picTeams || ''} onChange={e => setEditMeta('picTeams', e.target.value)} className={inp} />
+                      </div>
+                      <div>
+                        <label className={lbl}>WhatsApp</label>
+                        <input type="text" value={meta.picWA || ''} onChange={e => setEditMeta('picWA', e.target.value)} className={inp} />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className={sec}>Lampiran & Tembusan</div>
+                <div>
+                  <label className={lbl}>Lampiran</label>
+                  <div className="space-y-1.5">
+                    {lampiranArr.map((item, i) => (
+                      <div key={i} className="flex gap-1">
+                        <input type="text" value={item} onChange={e => updateSimple(lampiranArr, setLampiran, i, e.target.value)}
+                          placeholder={`Lampiran ${i + 1}`} className={`${inp} flex-1`} />
+                        <button type="button" onClick={() => removeSimple(lampiranArr, setLampiran, i)} className="text-red-400 hover:text-red-600 px-1 text-sm">×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => addSimple(lampiranArr, setLampiran)} className="mt-1.5 text-xs text-blue-600 hover:text-blue-800">+ Tambah Lampiran</button>
+                </div>
+                <div>
+                  <label className={lbl}>Tembusan</label>
+                  <div className="space-y-1.5">
+                    {tembusanArr.map((item, i) => (
+                      <div key={i} className="flex gap-1">
+                        <input type="text" value={item} onChange={e => updateSimple(tembusanArr, setTembusan, i, e.target.value)}
+                          placeholder={`Tembusan ${i + 1}`} className={`${inp} flex-1`} />
+                        <button type="button" onClick={() => removeSimple(tembusanArr, setTembusan, i)} className="text-red-400 hover:text-red-600 px-1 text-sm">×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => addSimple(tembusanArr, setTembusan)} className="mt-1.5 text-xs text-blue-600 hover:text-blue-800">+ Tambah Tembusan</button>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Perihal</label>
-                <textarea value={editForm.perihal} onChange={e => setEditForm(f => ({ ...f, perihal: e.target.value }))} rows={2}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Isi Memo</label>
-                <MemoEditor value={editForm.konten} onChange={v => setEditForm(f => ({ ...f, konten: v }))} />
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Action buttons */}
           <div className="space-y-2">

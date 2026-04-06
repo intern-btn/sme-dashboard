@@ -235,7 +235,7 @@ export default function MemoPreview({ form }) {
             ) : (
               <>
                 <p>{pembukaText}:</p>
-                <ol className="list-decimal list-inside">
+                <ol className="list-inside" style={{ listStyleType: 'lower-roman', paddingLeft: '1.5em' }}>
                   {rujukanEntries.map((r, i) => (
                     <li key={i}>
                       {formatRujukanItem(r)}

@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/AppHeader'
 
 // ---------------------------------------------------------------------------
 // Client-side SPBU parsers (mirror of server-side excel-parsers.js functions)
-// XLSX is loaded dynamically inside handleSPBUUpload — not bundled at page load
+// XLSX is loaded dynamically inside handleSPBUUpload â€” not bundled at page load
 // ---------------------------------------------------------------------------
 
 const SPBU_PRODUCT_MATCHERS = [
@@ -32,9 +32,10 @@ function normStr(v) { return String(v || '').trim().toUpperCase().replace(/\s+/g
 
 function clientParseIDAS(XLSX, workbook) {
   const empty = { type: 'prk_spbu', idasDate: null, rows: [], summary: { totalDebitur: 0, totalBakiDebet: 0, totalPlafond: 0, totalAmtrel: 0, kolBreakdown: { 1: 0, 2: 0, '3+': 0 }, nplCount: 0, cabangList: [] }, cabangBreakdown: [], parsedAt: new Date().toISOString() }
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  const sheet = workbook.Sheets['Page1_1(2)']
   if (!sheet) return empty
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
   const hIdx = data.findIndex(r => Array.isArray(r) && r.some(c => normStr(c).includes('TIPE PRODUK')))
   if (hIdx === -1) return empty
 
@@ -70,7 +71,9 @@ function clientParseIDAS(XLSX, workbook) {
     if (!cabMap.has(key)) cabMap.set(key, { cabang: r.cabang, kanwil: r.kanwil, count: 0, totalBakiDebet: 0 })
     const e = cabMap.get(key); e.count++; e.totalBakiDebet += r.bakiDebet || 0
   }
-  return { type: 'prk_spbu', idasDate, rows, summary: { totalDebitur: rows.length, totalBakiDebet: rows.reduce((s, r) => s + r.bakiDebet, 0), totalPlafond: rows.reduce((s, r) => s + r.plafond, 0), totalAmtrel: rows.reduce((s, r) => s + r.amtrel, 0), kolBreakdown, nplCount, cabangList: [...cabSet].sort() }, cabangBreakdown: [...cabMap.values()].sort((a, b) => b.totalBakiDebet - a.totalBakiDebet), parsedAt: new Date().toISOString() }
+  const result = { type: 'prk_spbu', idasDate, rows, summary: { totalDebitur: rows.length, totalBakiDebet: rows.reduce((s, r) => s + r.bakiDebet, 0), totalPlafond: rows.reduce((s, r) => s + r.plafond, 0), totalAmtrel: rows.reduce((s, r) => s + r.amtrel, 0), kolBreakdown, nplCount, cabangList: [...cabSet].sort() }, cabangBreakdown: [...cabMap.values()].sort((a, b) => b.totalBakiDebet - a.totalBakiDebet), parsedAt: new Date().toISOString() }
+  console.log('[SPBU] Final result summary:', result.summary)
+  return result
 }
 
 function clientParseManual(XLSX, workbook) {
@@ -86,7 +89,7 @@ function clientParseManual(XLSX, workbook) {
   const iPL = col('PLAFON', 'PLAFOND'), iTA = col('TGL AKAD', 'TANGGAL AKAD')
   const iJT = col('TGL JATUH TEMPO', 'JATUH TEMPO'), iAg = col('AGUNAN')
   const iCMS = col('CMS'), iEDC = col('EDC'), iQRIS = col('QRIS')
-  const boolFlag = v => { const s = String(v || '').trim().toLowerCase(); return ['v','✓','x','1','ya','y','yes','true'].includes(s) }
+  const boolFlag = v => { const s = String(v || '').trim().toLowerCase(); return ['v','âœ“','x','1','ya','y','yes','true'].includes(s) }
   const rows = []
   for (let i = hIdx + 1; i < data.length; i++) {
     const r = data[i]; if (!Array.isArray(r) || !r.length) continue
@@ -94,6 +97,45 @@ function clientParseManual(XLSX, workbook) {
     if (!nama && !noDebitur) continue
     rows.push({ noDebitur, nama, cabang: String(r[iCab] || '').trim(), plafon: iPL !== -1 ? parseNum(r[iPL]) : 0, tglAkad: iTA !== -1 ? parseDateISO(r[iTA]) : null, tglJatuhTempo: iJT !== -1 ? parseDateISO(r[iJT]) : null, agunan: iAg !== -1 ? String(r[iAg] || '').trim() : '', hasCMS: iCMS !== -1 ? boolFlag(r[iCMS]) : false, hasEDC: iEDC !== -1 ? boolFlag(r[iEDC]) : false, hasQRIS: iQRIS !== -1 ? boolFlag(r[iQRIS]) : false })
   }
+  return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
+}
+
+
+function clientParseManualCorrected(XLSX, workbook) {
+  const sheetName = workbook.SheetNames.find(n => String(n || '').trim().toLowerCase() === 'monitoring spbu')
+    || workbook.SheetNames.find(n => String(n || '').toLowerCase().includes('monitoring spbu'))
+  if (!sheetName) return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+
+  const boolFlag = v => {
+    const s = String(v || '').trim().toLowerCase()
+    return ['v', 'âœ“', 'Ã¢Å“â€œ', 'x', '1', 'ya', 'y', 'yes', 'true'].includes(s)
+  }
+
+  const rows = []
+  for (let i = 4; i < data.length; i++) {
+    const r = data[i]
+    if (!Array.isArray(r) || !r.length) continue
+    const noStr = String(r[0] || '').trim()
+    if (!noStr || !/^\d+$/.test(noStr)) continue
+
+    rows.push({
+      no: Number(noStr),
+      cabang: String(r[1] || '').trim(),
+      noDebitur: String(r[2] || '').trim(),
+      nama: String(r[3] || '').trim(),
+      produk: String(r[4] || '').trim(),
+      telp: String(r[5] || '').trim(),
+      tglAkad: parseDateISO(r[8]),
+      tglJatuhTempo: parseDateISO(r[9]),
+      agunan: String(r[10] || '').trim(),
+      plafon: parseNum(r[12]),
+      hasCMS: boolFlag(r[14]),
+      hasEDC: boolFlag(r[15]),
+      hasQRIS: boolFlag(r[16]),
+    })
+  }
+
   return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
 }
 
@@ -110,7 +152,9 @@ export default function AdminPage() {
   const [uploadMode, setUploadMode] = useState('separate') // 'separate' | 'multi'
   const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'spbu'
   const [uploading, setUploading] = useState(false)
+  const [uploadStep, setUploadStep] = useState('') // 'uploading' | 'processing' | ''
   const [spbuUploading, setSpbuUploading] = useState(false)
+  const [spbuStep, setSpbuStep] = useState('') // 'reading' | 'parsing' | 'sending' | ''
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [spbuMessage, setSpbuMessage] = useState('')
@@ -209,6 +253,7 @@ export default function AdminPage() {
     } finally {
       setUploading(false)
       setUploadProgress(0)
+      setUploadStep('')
     }
   }
 
@@ -229,12 +274,12 @@ export default function AdminPage() {
     setError('')
     setUploadStats(null)
     setUploadProgress(0)
+    setUploadStep('uploading')
 
     try {
       let processResponse
 
       if (process.env.NEXT_PUBLIC_USE_DIRECT_UPLOAD === 'true') {
-        // Vercel path: upload file to Vercel Blob first, then process via URL
         const { upload } = await import('@vercel/blob/client')
         const blob = await upload(multiSheetFile.name, multiSheetFile, {
           access: 'public',
@@ -244,21 +289,20 @@ export default function AdminPage() {
             setUploadProgress(percent)
           }
         })
+        setUploadStep('processing')
         processResponse = await fetch('/api/upload/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ blobUrl: blob.url })
         })
       } else {
-        // Self-hosted path: POST file directly to process route
-        setUploadProgress(50)
         const formData = new FormData()
         formData.append('file', multiSheetFile)
+        setUploadStep('processing')
         processResponse = await fetch('/api/upload/process', {
           method: 'POST',
           body: formData
         })
-        setUploadProgress(100)
       }
 
       const result = await processResponse.json()
@@ -293,6 +337,7 @@ export default function AdminPage() {
     } finally {
       setUploading(false)
       setUploadProgress(0)
+      setUploadStep('')
     }
   }
 
@@ -305,25 +350,38 @@ export default function AdminPage() {
   }
 
   const handleSPBUUpload = async () => {
-    if (!spbuIdasFile) { setSpbuError('Pilih File IDAS (.xlsx)'); return }
-    setSpbuUploading(true); setSpbuMessage(''); setSpbuError(''); setSpbuStats(null)
+    if (!spbuIdasFile && !spbuManualFile) { setSpbuError('Pilih minimal 1 file (IDAS atau Master)'); return }
+    setSpbuUploading(true); setSpbuMessage(''); setSpbuError(''); setSpbuStats(null); setSpbuStep('')
     try {
-      // Parse entirely in the browser — avoids 10MB server body limit
       const XLSX = await import('xlsx')
-      const parsedIdas = clientParseIDAS(XLSX, XLSX.read(new Uint8Array(await spbuIdasFile.arrayBuffer()), { type: 'array' }))
+      let parsedIdas = null
+      if (spbuIdasFile) {
+        setSpbuStep('reading')
+        const idasBuffer = await spbuIdasFile.arrayBuffer()
+        setSpbuStep('parsing')
+        parsedIdas = clientParseIDAS(XLSX, XLSX.read(new Uint8Array(idasBuffer), { type: 'array' }))
+      }
       let parsedManual = null
       if (spbuManualFile) {
-        parsedManual = clientParseManual(XLSX, XLSX.read(new Uint8Array(await spbuManualFile.arrayBuffer()), { type: 'array' }))
+        setSpbuStep('reading')
+        const manualBuffer = await spbuManualFile.arrayBuffer()
+        setSpbuStep('parsing')
+        parsedManual = clientParseManualCorrected(XLSX, XLSX.read(new Uint8Array(manualBuffer), { type: 'array' }))
       }
-      // POST only the filtered ~361 rows as JSON (~200KB)
+      setSpbuStep('sending')
       const response = await fetch('/api/upload/process-spbu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedIdas, parsedManual, filename: spbuIdasFile.name }),
+        body: JSON.stringify({
+          parsedIdas,
+          parsedManual,
+          idasFilename: spbuIdasFile?.name || null,
+          manualFilename: spbuManualFile?.name || null,
+        }),
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || result.details || 'Upload failed')
-      setSpbuMessage('Data PRK SPBU berhasil diproses!')
+      setSpbuMessage(result.manualOnly ? 'Master Monitoring SPBU berhasil diupload!' : 'Data PRK SPBU berhasil diproses!')
       setSpbuStats(result)
       setSpbuIdasFile(null); setSpbuManualFile(null)
       const ii = document.getElementById('spbu-idas-file'); if (ii) ii.value = ''
@@ -333,6 +391,7 @@ export default function AdminPage() {
       setSpbuError(err.message)
     } finally {
       setSpbuUploading(false)
+      setSpbuStep('')
     }
   }
 
@@ -391,7 +450,7 @@ export default function AdminPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-500">
-            <a href="/" className="text-blue-900 hover:underline font-medium">← Return to Dashboard</a>
+            <a href="/" className="text-blue-900 hover:underline font-medium">â† Return to Dashboard</a>
           </div>
         </div>
       </div>
@@ -560,11 +619,11 @@ export default function AdminPage() {
                     <strong>Multi-Sheet Excel:</strong> Upload satu file Excel yang berisi 5 sheet dengan awalan:
                   </p>
                   <ul className="text-xs text-blue-800 mt-2 ml-4 space-y-1">
-                    <li>• <strong>22a</strong> - Realisasi Harian</li>
-                    <li>• <strong>44a1</strong> - Realisasi Kredit</li>
-                    <li>• <strong>44b</strong> - Posisi Kredit</li>
-                    <li>• <strong>49b</strong> - KOL 2</li>
-                    <li>• <strong>49c</strong> - NPL</li>
+                    <li>â€¢ <strong>22a</strong> - Realisasi Harian</li>
+                    <li>â€¢ <strong>44a1</strong> - Realisasi Kredit</li>
+                    <li>â€¢ <strong>44b</strong> - Posisi Kredit</li>
+                    <li>â€¢ <strong>49b</strong> - KOL 2</li>
+                    <li>â€¢ <strong>49c</strong> - NPL</li>
                   </ul>
                 </div>
                 <div>
@@ -589,22 +648,6 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Progress Bar */}
-            {uploading && uploadProgress > 0 && (
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Upload Progress</span>
-                  <span className="text-sm font-medium text-blue-900">{uploadProgress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-900 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
             <button
               onClick={handleUpload}
               disabled={uploading || (uploadMode === 'multi' ? !multiSheetFile : (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile))}
@@ -614,8 +657,46 @@ export default function AdminPage() {
                   : 'bg-blue-900 hover:bg-blue-800'
               }`}
             >
-              {uploading ? (uploadProgress > 0 ? `Uploading ${uploadProgress}%...` : 'Processing...') : 'Upload & Process'}
+              {uploading ? 'Memproses...' : 'Upload & Process'}
             </button>
+
+            {uploading && (() => {
+              const steps = [
+                { key: 'uploading', label: 'Mengunggah file', pct: Math.round(uploadProgress * 0.9) || 5 },
+                { key: 'processing', label: 'Memproses di server', pct: 95 },
+              ]
+              const currentIdx = steps.findIndex(s => s.key === uploadStep)
+              const barPct = currentIdx === -1 ? 5 : steps[currentIdx].pct
+              return (
+                <div className="mt-4 space-y-3">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className="bg-blue-900 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${barPct}%` }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    {steps.map((s, i) => {
+                      const done = currentIdx > i
+                      const active = currentIdx === i
+                      return (
+                        <div key={s.key} className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
+                            ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                            {done ? '✓' : i + 1}
+                          </div>
+                          <span className={`text-sm flex items-center gap-2 ${active ? 'text-blue-900 font-semibold' : done ? 'text-green-700' : 'text-gray-400'}`}>
+                            {s.label}
+                            {active && s.key === 'uploading' && uploadProgress > 0 && <span className="text-blue-700 font-normal">{uploadProgress}%</span>}
+                            {active && <span className="inline-block w-3 h-3 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
 
             {message && (
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -643,7 +724,7 @@ export default function AdminPage() {
             {activeTab === 'spbu' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File IDAS (.xlsx) — wajib</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File IDAS PRK (.xlsx) — wajib untuk upload harian</label>
                   <input
                     id="spbu-idas-file"
                     type="file"
@@ -655,7 +736,7 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File Monitoring Manual (.xlsx) — opsional</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File Master Monitoring SPBU (.xlsx)</label>
                   <input
                     id="spbu-manual-file"
                     type="file"
@@ -663,18 +744,59 @@ export default function AdminPage() {
                     onChange={(e) => setSpbuManualFile(e.target.files[0])}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
+                  <p className="mt-1 text-xs text-gray-500 border-l-2 border-gray-200 pl-3">
+                    Upload master file hanya perlu diupload ulang jika ada perubahan data debitur.
+                  </p>
                   {spbuManualFile && <p className="mt-1 text-sm text-green-600">{spbuManualFile.name}</p>}
                 </div>
 
                 <button
                   onClick={handleSPBUUpload}
-                  disabled={spbuUploading || !spbuIdasFile}
+                  disabled={spbuUploading || (!spbuIdasFile && !spbuManualFile)}
                   className={`w-full py-3 rounded-lg font-semibold text-white transition-colors ${
-                    spbuUploading || !spbuIdasFile ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'
+                    spbuUploading || (!spbuIdasFile && !spbuManualFile) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'
                   }`}
                 >
-                  {spbuUploading ? 'Processing...' : 'Upload PRK SPBU'}
+                  {spbuUploading ? 'Memproses...' : 'Upload PRK SPBU'}
                 </button>
+
+                {spbuUploading && (() => {
+                  const steps = [
+                    { key: 'reading', label: 'Membaca file', pct: 25 },
+                    { key: 'parsing', label: 'Parsing & filter data', pct: 70 },
+                    { key: 'sending', label: 'Mengirim ke server', pct: 90 },
+                  ]
+                  const currentIdx = steps.findIndex(s => s.key === spbuStep)
+                  const barPct = currentIdx === -1 ? 5 : steps[currentIdx].pct
+                  return (
+                    <div className="space-y-3 pt-1">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-900 h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${barPct}%` }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        {steps.map((s, i) => {
+                          const done = currentIdx > i
+                          const active = currentIdx === i
+                          return (
+                            <div key={s.key} className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
+                                ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                {done ? '✓' : i + 1}
+                              </div>
+                              <span className={`text-sm flex items-center gap-2 ${active ? 'text-blue-900 font-semibold' : done ? 'text-green-700' : 'text-gray-400'}`}>
+                                {s.label}
+                                {active && <span className="inline-block w-3 h-3 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {spbuMessage && (
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg">

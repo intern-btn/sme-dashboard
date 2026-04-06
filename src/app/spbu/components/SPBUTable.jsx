@@ -5,7 +5,8 @@ import * as XLSX from 'xlsx'
 import ExportButton from '../../components/ExportButton'
 import { exportTableToPDF } from '../../lib/pdfExport'
 
-const formatRp = (n) => `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)}`
+const formatRp = (n) =>
+  `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)}`
 const formatNum = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
 
 function toKolNum(kol) {
@@ -13,38 +14,59 @@ function toKolNum(kol) {
   return Number.isNaN(kolNum) ? null : kolNum
 }
 
+function formatDateDisplay(value) {
+  const s = String(value || '').trim()
+  if (!s) return ''
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const CHECK = '\u2713'
+const WARN = '\u26A0'
+const SORT_ICON = '\u2195'
+
 export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, idasDate }) {
   const [sort, setSort] = useState({ key: 'bakiDebet', dir: 'desc' })
 
   const sortedRows = useMemo(() => {
     const arr = Array.isArray(rows) ? [...rows] : []
     const dir = sort.dir === 'asc' ? 1 : -1
+
     arr.sort((a, b) => {
       const ak = a?.[sort.key]
       const bk = b?.[sort.key]
-      if (typeof ak === 'number' && typeof bk === 'number') return (ak - bk) * dir
+
+      if (typeof ak === 'number' || typeof bk === 'number') {
+        const an = Number.isFinite(Number(ak)) ? Number(ak) : -Infinity
+        const bn = Number.isFinite(Number(bk)) ? Number(bk) : -Infinity
+        return (an - bn) * dir
+      }
+
       return String(ak || '').localeCompare(String(bk || '')) * dir
     })
+
     return arr
   }, [rows, sort])
 
-  const exportRows = sortedRows.map((r) => ({
-    nama: r.nama,
-    noRekening: r.noRekening,
-    cabang: r.cabang,
-    tipeProduk: r.tipeProduk,
-    plafond: r.plafond,
-    amtrel: r.amtrel,
-    bakiDebet: r.bakiDebet,
-    kol: r.kol,
-    plNpl: r.plNpl,
-    tglJatuhTempo: r.tglJatuhTempo,
-    tunggakan: r.tunggakan,
-    cms: r.cms ? 'Y' : '',
-    edc: r.edc ? 'Y' : '',
-    qris: r.qris ? 'Y' : '',
-    idasDelayed: r.idasDelayed ? 'Y' : '',
-  }))
+  const exportRows = sortedRows.map((r) => {
+    const status = r?.idasFound ? 'IN_IDAS' : 'DELAYED'
+    return {
+      cabang: r?.cabang || '',
+      noDebitur: r?.noDebitur || '',
+      nama: r?.nama || '',
+      tglAkad: formatDateDisplay(r?.tglAkad),
+      tglJatuhTempo: formatDateDisplay(r?.tglJatuhTempo),
+      plafon: r?.plafon ?? null,
+      cms: r?.hasCMS ? 'Y' : '',
+      edc: r?.hasEDC ? 'Y' : '',
+      qris: r?.hasQRIS ? 'Y' : '',
+      bakiDebet: r?.idasFound ? (r?.bakiDebet ?? null) : null,
+      kol: r?.idasFound ? (r?.kol ?? '') : '',
+      amtrel: r?.idasFound ? (r?.amtrel ?? null) : null,
+      status,
+    }
+  })
 
   const handleExportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(exportRows)
@@ -55,25 +77,34 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
 
   const handleExportPDF = () => {
     const headers = [
-      'NAMA', 'NO. REKENING', 'CABANG', 'TIPE PRODUK', 'PLAFOND', 'AMTREL', 'BAKI DEBET',
-      'KOL', 'PL/NPL', 'TGL JT TEMPO', 'TUNGGAKAN', 'CMS', 'EDC', 'QRIS', 'IDAS DELAY'
+      'CABANG',
+      'NO DEBITUR',
+      'NAMA',
+      'TGL AKAD',
+      'TGL JT',
+      'PLAFON',
+      'CMS',
+      'EDC',
+      'QRIS',
+      'BAKI DEBET',
+      'KOL',
+      'AMTREL',
+      'STATUS',
     ]
     const data = exportRows.map((r) => [
-      r.nama,
-      r.noRekening,
       r.cabang,
-      r.tipeProduk,
-      formatNum(r.plafond),
-      formatNum(r.amtrel),
-      formatNum(r.bakiDebet),
-      r.kol,
-      r.plNpl,
-      r.tglJatuhTempo || '',
-      formatNum(r.tunggakan),
+      r.noDebitur,
+      r.nama,
+      r.tglAkad,
+      r.tglJatuhTempo,
+      formatNum(r.plafon),
       r.cms,
       r.edc,
       r.qris,
-      r.idasDelayed,
+      formatNum(r.bakiDebet),
+      r.kol,
+      formatNum(r.amtrel),
+      r.status,
     ])
 
     exportTableToPDF({
@@ -84,11 +115,10 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
       fileName: `PRK_SPBU_${idasDate || 'data'}.pdf`,
       orientation: 'landscape',
       columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 24 },
-        3: { cellWidth: 35 },
-      }
+        2: { cellWidth: 48 }, // nama
+        0: { cellWidth: 22 }, // cabang
+        1: { cellWidth: 28 }, // no debitur
+      },
     })
   }
 
@@ -120,9 +150,27 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             >
               <option value="">Semua</option>
-              {cabangList.map((c) => <option key={c} value={c}>{c}</option>)}
+              {cabangList.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilter('status', e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="found">In IDAS</option>
+              <option value="delayed">Not found (Delayed)</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">KOL</label>
             <select
@@ -132,22 +180,11 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
             >
               <option value="all">All</option>
               <option value="kol1">KOL 1</option>
-              <option value="kol2">KOL 2</option>
-              <option value="kol3plus">KOL 3+</option>
+              <option value="kol2plus">KOL 2+</option>
+              <option value="kol5plus">KOL 5+</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">PL/NPL</label>
-            <select
-              value={filters.plnpl}
-              onChange={(e) => setFilter('plnpl', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="all">All</option>
-              <option value="PL">PL</option>
-              <option value="NPL">NPL</option>
-            </select>
-          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cari Nama</label>
             <input
@@ -165,58 +202,67 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
         <table className="min-w-[1200px] w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <Th label="Nama" onSort={() => setSortBy(setSort, sort, 'nama')} />
-              <Th label="No. Rekening" onSort={() => setSortBy(setSort, sort, 'noRekening')} />
               <Th label="Cabang" onSort={() => setSortBy(setSort, sort, 'cabang')} />
-              <Th label="Tipe Produk" />
-              <Th label="Plafond" onSort={() => setSortBy(setSort, sort, 'plafond')} right />
-              <Th label="Amtrel" onSort={() => setSortBy(setSort, sort, 'amtrel')} right />
-              <Th label="Baki Debet" onSort={() => setSortBy(setSort, sort, 'bakiDebet')} right />
-              <Th label="KOL" onSort={() => setSortBy(setSort, sort, 'kol')} />
-              <Th label="PL/NPL" />
-              <Th label="Tgl JT" />
-              <Th label="Tunggakan" onSort={() => setSortBy(setSort, sort, 'tunggakan')} right />
+              <Th label="No Debitur" onSort={() => setSortBy(setSort, sort, 'noDebitur')} />
+              <Th label="Nama" onSort={() => setSortBy(setSort, sort, 'nama')} />
+              <Th label="Tgl Akad" onSort={() => setSortBy(setSort, sort, 'tglAkad')} />
+              <Th label="Tgl JT" onSort={() => setSortBy(setSort, sort, 'tglJatuhTempo')} />
+              <Th label="Plafon" onSort={() => setSortBy(setSort, sort, 'plafon')} right />
               <Th label="CMS" />
               <Th label="EDC" />
               <Th label="QRIS" />
+              <Th label="Baki Debet" onSort={() => setSortBy(setSort, sort, 'bakiDebet')} right />
+              <Th label="KOL" onSort={() => setSortBy(setSort, sort, 'kol')} />
+              <Th label="Amtrel" onSort={() => setSortBy(setSort, sort, 'amtrel')} right />
+              <Th label="Status" onSort={() => setSortBy(setSort, sort, 'idasFound')} />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {sortedRows.map((r, idx) => {
-              const plnpl = String(r?.plNpl || '').toUpperCase()
               const kolNum = toKolNum(r?.kol)
-              const rowClass = plnpl.includes('NPL')
-                ? 'bg-red-50'
-                : r?.idasDelayed
-                  ? 'bg-orange-50'
-                  : (kolNum && kolNum >= 2)
+              const rowClass = !r?.idasFound
+                ? 'bg-orange-50'
+                : kolNum && kolNum >= 5
+                  ? 'bg-red-50'
+                  : kolNum && kolNum >= 2
                     ? 'bg-yellow-50'
                     : ''
 
               return (
                 <tr key={idx} className={`${rowClass} hover:bg-gray-50`}>
-                  <td className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap">{r.nama}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.noRekening || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.cabang || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700">{r.tipeProduk || (r.idasDelayed ? '(IDAS delayed)' : '-')}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">{formatNum(r.plafond)}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">{formatNum(r.amtrel)}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.cabang || '-'}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap font-mono">{r?.noDebitur || '-'}</td>
+                  <td className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap">{r?.nama || '-'}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateDisplay(r?.tglAkad) || '-'}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateDisplay(r?.tglJatuhTempo) || '-'}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">{formatNum(r?.plafon)}</td>
+                  <td className="px-3 py-2 text-center">{r?.hasCMS ? CHECK : ''}</td>
+                  <td className="px-3 py-2 text-center">{r?.hasEDC ? CHECK : ''}</td>
+                  <td className="px-3 py-2 text-center">{r?.hasQRIS ? CHECK : ''}</td>
                   <td className="px-3 py-2 text-right whitespace-nowrap font-semibold" style={{ color: '#003d7a' }}>
-                    {formatNum(r.bakiDebet)}
+                    {r?.idasFound ? formatNum(r?.bakiDebet) : '-'}
                   </td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.kol || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.plNpl || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.tglJatuhTempo || '-'}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">{formatNum(r.tunggakan)}</td>
-                  <td className="px-3 py-2 text-center">{r.cms ? '✓' : ''}</td>
-                  <td className="px-3 py-2 text-center">{r.edc ? '✓' : ''}</td>
-                  <td className="px-3 py-2 text-center">{r.qris ? '✓' : ''}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.idasFound ? (r?.kol || '-') : '-'}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">{r?.idasFound ? formatNum(r?.amtrel) : '-'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {r?.idasFound ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+                        {CHECK} In IDAS
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+                        {WARN} Delayed
+                      </span>
+                    )}
+                  </td>
                 </tr>
               )
             })}
             {sortedRows.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-10 text-center text-gray-400">Tidak ada data.</td>
+                <td colSpan={13} className="px-4 py-10 text-center text-gray-400">
+                  Tidak ada data.
+                </td>
               </tr>
             )}
           </tbody>
@@ -224,7 +270,8 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
       </div>
 
       <div className="p-3 border-t border-gray-200 text-xs text-gray-500">
-        Total rows: {sortedRows.length}. Highlight: <span className="text-red-700">NPL</span> / <span className="text-orange-700">IDAS delayed</span> / <span className="text-yellow-700">KOL 2+</span>
+        Total rows: {sortedRows.length}. Highlight: <span className="text-orange-700">Delayed</span> /{' '}
+        <span className="text-yellow-700">KOL 2-4</span> / <span className="text-red-700">KOL 5+</span>
       </div>
     </div>
   )
@@ -232,11 +279,17 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
 
 function Th({ label, onSort = null, right = false }) {
   return (
-    <th className={`px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap ${right ? 'text-right' : 'text-left'}`}>
+    <th
+      className={`px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap ${
+        right ? 'text-right' : 'text-left'
+      }`}
+    >
       <div className={`flex items-center gap-1 ${right ? 'justify-end' : ''}`}>
         <span>{label}</span>
         {onSort && (
-          <button type="button" onClick={onSort} className="text-gray-400 hover:text-gray-600">↕</button>
+          <button type="button" onClick={onSort} className="text-gray-400 hover:text-gray-600">
+            {SORT_ICON}
+          </button>
         )}
       </div>
     </th>
@@ -249,3 +302,4 @@ function setSortBy(setSort, sort, key) {
     return { key, dir: 'desc' }
   })
 }
+

@@ -3,11 +3,80 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, useEffect } from 'react'
 
 function isActive(pathname, href) {
   if (href === '/') return pathname === '/'
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function getInitials(name) {
+  if (!name) return '?'
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+}
+
+function UserMenu({ user }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-blue-700/60 transition-colors"
+      >
+        <div className="w-8 h-8 rounded-full bg-[#e84e0f] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+          {getInitials(user.name)}
+        </div>
+        <div className="hidden sm:flex flex-col items-start leading-tight">
+          <span className="text-sm text-white font-medium leading-none">{user.name}</span>
+          <span className="text-[11px] text-blue-200 capitalize leading-none mt-0.5">{user.role}</span>
+        </div>
+        <svg className="w-3.5 h-3.5 text-blue-200 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#e84e0f] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                {getInitials(user.name)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 capitalize font-medium">
+                  {user.role}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="p-2">
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Keluar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AppHeader({
@@ -24,7 +93,6 @@ export default function AppHeader({
   const mainNav = [
     { href: '/', label: 'Beranda' },
     { href: '/monitoring', label: 'Monitoring' },
-    { href: '/spbu', label: 'SPBU' },
     { href: '/memo', label: 'Memo' },
     ...(role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
   ]
@@ -109,18 +177,15 @@ export default function AppHeader({
           </nav>
 
           <div className="flex items-center gap-2">
-            {user && (
-              <>
-                <span className="hidden sm:block text-sm text-blue-100">{user.name}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-700 capitalize">{user.role}</span>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="text-xs text-blue-200 hover:text-white ml-1"
-                  type="button"
-                >
-                  Keluar
-                </button>
-              </>
+            {user ? (
+              <UserMenu user={user} />
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm text-blue-200 hover:text-white"
+              >
+                Login
+              </Link>
             )}
           </div>
         </div>
