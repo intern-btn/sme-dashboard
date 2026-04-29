@@ -9,6 +9,7 @@ import SPBUTable from '../../spbu/components/SPBUTable'
 const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
   { href: '/monitoring/spbu', label: 'PRK SPBU' },
+  { href: '/monitoring/bpjs', label: 'BPJS' },
 ]
 
 function normName(s) {
