@@ -139,6 +139,103 @@ function clientParseManualCorrected(XLSX, workbook) {
   return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
 }
 
+function clientParseIDAsBPJS(XLSX, workbook) {
+  const empty = {
+    type: 'bpjs',
+    idasDate: null,
+    rows: [],
+    summary: { totalDebitur: 0, totalBakiDebet: 0, totalPlafond: 0, totalAmtrel: 0, kolBreakdown: { 1: 0, 2: 0, '3+': 0 }, nplCount: 0, cabangList: [] },
+    cabangBreakdown: [],
+    parsedAt: new Date().toISOString(),
+  }
+  const sheet = workbook.Sheets['Page1_1(2)']
+  if (!sheet) return empty
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+  const hIdx = data.findIndex(r => Array.isArray(r) && r.some(c => normStr(c).includes('TIPE PRODUK')))
+  if (hIdx === -1) return empty
+
+  const hRow = data[hIdx].map(normStr)
+  const col = (...cands) => { for (const c of cands) { const i = hRow.findIndex(h => h === c || h.includes(c)); if (i !== -1) return i } return -1 }
+  const iDate = col('TANGGAL'), iNama = col('NAMA'), iTipe = col('TIPE PRODUK')
+  const iRek = col('NO. REKENING', 'NO REKENING', 'NO REK'), iBD = col('BAKI DEBET')
+  const iPL = col('PLAFOND'), iAM = col('AMTREL'), iKOL = col('KOL')
+  const iPN = col('PL/NPL', 'PL NPL'), iCab = col('CABANG'), iKan = col('KANWIL')
+  const iTung = col('TUNGGAKAN')
+
+  const rows = []; let idasDate = null
+  for (let i = hIdx + 1; i < data.length; i++) {
+    const r = data[i]
+    if (!Array.isArray(r) || !r.length) continue
+    const nama = String(r[iNama] || '').trim()
+    const noRekening = iRek !== -1 ? String(r[iRek] || '').trim() : ''
+    if (!nama && !noRekening) continue
+    const tgl = iDate !== -1 ? parseDateISO(r[iDate]) : null
+    if (!idasDate && tgl) idasDate = tgl
+    rows.push({
+      tanggal: tgl,
+      tipeProduk: iTipe !== -1 ? String(r[iTipe] || '').trim() : '',
+      nama,
+      noRekening,
+      bakiDebet: iBD !== -1 ? parseNum(r[iBD]) : 0,
+      plafond: iPL !== -1 ? parseNum(r[iPL]) : 0,
+      amtrel: iAM !== -1 ? parseNum(r[iAM]) : 0,
+      kol: iKOL !== -1 ? String(r[iKOL] || '').trim() : '',
+      plNpl: iPN !== -1 ? String(r[iPN] || '').trim() : '',
+      cabang: iCab !== -1 ? String(r[iCab] || '').trim() : '',
+      kanwil: iKan !== -1 ? String(r[iKan] || '').trim() : '',
+      tunggakan: iTung !== -1 ? parseNum(r[iTung]) : 0,
+    })
+  }
+
+  const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
+  let nplCount = 0; const cabSet = new Set(); const cabMap = new Map()
+  for (const r of rows) {
+    const k = parseInt(String(r.kol || '').replace(/\D/g, ''), 10)
+    if (!isNaN(k)) { if (k <= 1) kolBreakdown[1]++; else if (k === 2) kolBreakdown[2]++; else kolBreakdown['3+']++ }
+    if (String(r.plNpl).toUpperCase().includes('NPL')) nplCount++
+    if (r.cabang) cabSet.add(r.cabang)
+    const key = `${r.cabang}__${r.kanwil}`
+    if (!cabMap.has(key)) cabMap.set(key, { cabang: r.cabang, kanwil: r.kanwil, count: 0, totalBakiDebet: 0 })
+    const e = cabMap.get(key); e.count++; e.totalBakiDebet += r.bakiDebet || 0
+  }
+  return {
+    type: 'bpjs',
+    idasDate,
+    rows,
+    summary: { totalDebitur: rows.length, totalBakiDebet: rows.reduce((s, r) => s + r.bakiDebet, 0), totalPlafond: rows.reduce((s, r) => s + r.plafond, 0), totalAmtrel: rows.reduce((s, r) => s + r.amtrel, 0), kolBreakdown, nplCount, cabangList: [...cabSet].sort() },
+    cabangBreakdown: [...cabMap.values()].sort((a, b) => b.totalBakiDebet - a.totalBakiDebet),
+    parsedAt: new Date().toISOString(),
+  }
+}
+
+function clientParseManualBPJS(XLSX, workbook) {
+  const sheetName = workbook.SheetNames.find(n => String(n || '').trim().toLowerCase() === 'monitoring bpjs')
+    || workbook.SheetNames.find(n => String(n || '').toLowerCase().includes('monitoring bpjs'))
+  if (!sheetName) return { type: 'bpjs_manual', rows: [], parsedAt: new Date().toISOString() }
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+
+  const rows = []
+  for (let i = 0; i < data.length; i++) {
+    const r = data[i]
+    if (!Array.isArray(r) || !r.length) continue
+    const noStr = String(r[0] || '').trim()
+    if (!noStr || !/^\d+$/.test(noStr)) continue
+    rows.push({
+      no: Number(noStr),
+      cabang: String(r[1] || '').trim(),
+      noDebitur: String(r[2] || '').trim(),
+      nama: String(r[3] || '').trim(),
+      produk: String(r[4] || '').trim(),
+      telp: String(r[5] || '').trim(),
+      tglAkad: parseDateISO(r[8]),
+      tglJatuhTempo: parseDateISO(r[9]),
+      plafon: parseNum(r[11]),
+    })
+  }
+  return { type: 'bpjs_manual', rows, parsedAt: new Date().toISOString() }
+}
+
 export default function AdminPage() {
   const [user, setUser] = useState(null)
   const [nplFile, setNplFile] = useState(null)
@@ -150,7 +247,7 @@ export default function AdminPage() {
   const [spbuIdasFile, setSpbuIdasFile] = useState(null)
   const [spbuManualFile, setSpbuManualFile] = useState(null)
   const [uploadMode, setUploadMode] = useState('separate') // 'separate' | 'multi'
-  const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'spbu'
+  const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'spbu' | 'bpjs'
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState('') // 'uploading' | 'processing' | ''
   const [spbuUploading, setSpbuUploading] = useState(false)
@@ -161,7 +258,14 @@ export default function AdminPage() {
   const [spbuError, setSpbuError] = useState('')
   const [uploadStats, setUploadStats] = useState(null)
   const [spbuStats, setSpbuStats] = useState(null)
-  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null, prk_spbu: null })
+  const [bpjsIdasFile, setBpjsIdasFile] = useState(null)
+  const [bpjsManualFile, setBpjsManualFile] = useState(null)
+  const [bpjsUploading, setBpjsUploading] = useState(false)
+  const [bpjsStep, setBpjsStep] = useState('')
+  const [bpjsMessage, setBpjsMessage] = useState('')
+  const [bpjsError, setBpjsError] = useState('')
+  const [bpjsStats, setBpjsStats] = useState(null)
+  const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null, prk_spbu: null, bpjs: null })
   const [history, setHistory] = useState([])
   const [uploadProgress, setUploadProgress] = useState(0)
 
@@ -395,6 +499,52 @@ export default function AdminPage() {
     }
   }
 
+  const handleBPJSUpload = async () => {
+    if (!bpjsIdasFile && !bpjsManualFile) { setBpjsError('Pilih minimal 1 file (IDAS atau Master)'); return }
+    setBpjsUploading(true); setBpjsMessage(''); setBpjsError(''); setBpjsStats(null); setBpjsStep('')
+    try {
+      const XLSX = await import('xlsx')
+      let parsedIdas = null
+      if (bpjsIdasFile) {
+        setBpjsStep('reading')
+        const idasBuffer = await bpjsIdasFile.arrayBuffer()
+        setBpjsStep('parsing')
+        parsedIdas = clientParseIDAsBPJS(XLSX, XLSX.read(new Uint8Array(idasBuffer), { type: 'array' }))
+      }
+      let parsedManual = null
+      if (bpjsManualFile) {
+        setBpjsStep('reading')
+        const manualBuffer = await bpjsManualFile.arrayBuffer()
+        setBpjsStep('parsing')
+        parsedManual = clientParseManualBPJS(XLSX, XLSX.read(new Uint8Array(manualBuffer), { type: 'array' }))
+      }
+      setBpjsStep('sending')
+      const response = await fetch('/api/upload/process-bpjs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parsedIdas,
+          parsedManual,
+          idasFilename: bpjsIdasFile?.name || null,
+          manualFilename: bpjsManualFile?.name || null,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || result.details || 'Upload failed')
+      setBpjsMessage(result.manualOnly ? 'Master Monitoring BPJS berhasil diupload!' : 'Data BPJS berhasil diproses!')
+      setBpjsStats(result)
+      setBpjsIdasFile(null); setBpjsManualFile(null)
+      const ii = document.getElementById('bpjs-idas-file'); if (ii) ii.value = ''
+      const mi = document.getElementById('bpjs-manual-file'); if (mi) mi.value = ''
+      setTimeout(() => { fetchCurrentStatus(); fetchHistory() }, 1000)
+    } catch (err) {
+      setBpjsError(err.message)
+    } finally {
+      setBpjsUploading(false)
+      setBpjsStep('')
+    }
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleString('id-ID', {
@@ -512,6 +662,16 @@ export default function AdminPage() {
                 }`}
               >
                 PRK SPBU
+              </button>
+              <button
+                onClick={() => setActiveTab('bpjs')}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === 'bpjs'
+                    ? 'bg-white text-blue-900 border-b-2 border-blue-900'
+                    : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                BPJS
               </button>
             </div>
 
@@ -819,6 +979,100 @@ export default function AdminPage() {
               </div>
             )}
 
+            {activeTab === 'bpjs' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File IDAS BPJS (.xlsx) — wajib untuk upload harian</label>
+                  <input
+                    id="bpjs-idas-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBpjsIdasFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {bpjsIdasFile && <p className="mt-1 text-sm text-green-600">{bpjsIdasFile.name}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File Master Monitoring BPJS (.xlsx)</label>
+                  <input
+                    id="bpjs-manual-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setBpjsManualFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 border-l-2 border-gray-200 pl-3">
+                    Upload master file hanya perlu diupload ulang jika ada perubahan data debitur.
+                  </p>
+                  {bpjsManualFile && <p className="mt-1 text-sm text-green-600">{bpjsManualFile.name}</p>}
+                </div>
+
+                <button
+                  onClick={handleBPJSUpload}
+                  disabled={bpjsUploading || (!bpjsIdasFile && !bpjsManualFile)}
+                  className={`w-full py-3 rounded-lg font-semibold text-white transition-colors ${
+                    bpjsUploading || (!bpjsIdasFile && !bpjsManualFile) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'
+                  }`}
+                >
+                  {bpjsUploading ? 'Memproses...' : 'Upload BPJS'}
+                </button>
+
+                {bpjsUploading && (() => {
+                  const steps = [
+                    { key: 'reading', label: 'Membaca file', pct: 25 },
+                    { key: 'parsing', label: 'Parsing data', pct: 70 },
+                    { key: 'sending', label: 'Mengirim ke server', pct: 90 },
+                  ]
+                  const currentIdx = steps.findIndex(s => s.key === bpjsStep)
+                  const barPct = currentIdx === -1 ? 5 : steps[currentIdx].pct
+                  return (
+                    <div className="space-y-3 pt-1">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div className="bg-blue-900 h-1.5 rounded-full transition-all duration-500" style={{ width: `${barPct}%` }} />
+                      </div>
+                      <div className="space-y-2">
+                        {steps.map((s, i) => {
+                          const done = currentIdx > i
+                          const active = currentIdx === i
+                          return (
+                            <div key={s.key} className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${done ? 'bg-green-500 text-white' : active ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                {done ? '✓' : i + 1}
+                              </div>
+                              <span className={`text-sm flex items-center gap-2 ${active ? 'text-blue-900 font-semibold' : done ? 'text-green-700' : 'text-gray-400'}`}>
+                                {s.label}
+                                {active && <span className="inline-block w-3 h-3 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {bpjsMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-700 font-medium">{bpjsMessage}</p>
+                    {bpjsStats?.idasDate && (
+                      <div className="mt-2 text-sm text-green-700">
+                        <p>IDAS Date: {bpjsStats.idasDate}</p>
+                        <p>Total Debitur: {bpjsStats.stats?.totalDebitur || 0}</p>
+                        <p>Total Baki Debet: Rp {new Intl.NumberFormat('id-ID').format(bpjsStats.stats?.totalBakiDebet || 0)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {bpjsError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700">{bpjsError}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             </div>
           </div>
 
@@ -866,6 +1120,13 @@ export default function AdminPage() {
                 <div className="text-sm font-medium text-gray-900">PRK SPBU</div>
                 <div className="text-xs text-gray-600 mt-1">
                   {currentData.prk_spbu ? formatDate(currentData.prk_spbu.uploadDate) : 'No data'}
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="text-sm font-medium text-gray-900">BPJS</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {currentData.bpjs ? formatDate(currentData.bpjs.uploadDate) : 'No data'}
                 </div>
               </div>
             </div>
