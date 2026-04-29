@@ -64,6 +64,7 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
       bakiDebet: r?.idasFound ? (r?.bakiDebet ?? null) : null,
       kol: r?.idasFound ? (r?.kol ?? '') : '',
       amtrel: r?.idasFound ? (r?.amtrel ?? null) : null,
+      pokokTerbayar: r?.idasFound ? ((r?.amtrel ?? 0) - (r?.bakiDebet ?? 0)) : null,
       status,
     }
   })
@@ -89,6 +90,7 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
       'BAKI DEBET',
       'KOL',
       'AMTREL',
+      'POKOK TERBAYAR',
       'STATUS',
     ]
     const data = exportRows.map((r) => [
@@ -104,6 +106,7 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
       formatNum(r.bakiDebet),
       r.kol,
       formatNum(r.amtrel),
+      r.pokokTerbayar !== null ? formatNum(r.pokokTerbayar) : '-',
       r.status,
     ])
 
@@ -214,6 +217,7 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
               <Th label="Baki Debet" onSort={() => setSortBy(setSort, sort, 'bakiDebet')} right />
               <Th label="KOL" onSort={() => setSortBy(setSort, sort, 'kol')} />
               <Th label="Amtrel" onSort={() => setSortBy(setSort, sort, 'amtrel')} right />
+              <Th label="Pokok Terbayar" right />
               <Th label="Status" onSort={() => setSortBy(setSort, sort, 'idasFound')} />
             </tr>
           </thead>
@@ -244,6 +248,9 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
                   </td>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.idasFound ? (r?.kol || '-') : '-'}</td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">{r?.idasFound ? formatNum(r?.amtrel) : '-'}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {r?.idasFound ? formatNum((r?.amtrel ?? 0) - (r?.bakiDebet ?? 0)) : '-'}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     {r?.idasFound ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
@@ -260,7 +267,7 @@ export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, 
             })}
             {sortedRows.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={14} className="px-4 py-10 text-center text-gray-400">
                   Tidak ada data.
                 </td>
               </tr>

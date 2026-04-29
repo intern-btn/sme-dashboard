@@ -398,6 +398,7 @@ export default function NewMemoPage() {
         )
       case 'isi_memo':
         return (
+          (form.metadata?.kontenIsi || '').trim().length > 0 ||
           (form.konten || '').trim().length > 0 ||
           (Array.isArray(form.rujukanList) && form.rujukanList.some(r => (r?.nomorMemo || '').trim())) ||
           (form.picNama || '').trim().length > 0
@@ -912,10 +913,24 @@ export default function NewMemoPage() {
                     </div>
                   </div>
 
-                  {/* KONTEN */}
+                  {/* ISI POKOK */}
                   <div className="border border-gray-200 rounded-xl p-4 bg-white">
-                    <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Konten</div>
-                    <MemoEditor value={form.konten} onChange={(v) => set('konten', v)} />
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider">Isi Pokok</div>
+                      <span className="text-xs text-red-500">*</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-3">Sampaikan poin-poin utama memo. Gunakan numbered list untuk beberapa poin.</p>
+                    <MemoEditor value={form.metadata?.kontenIsi || ''} onChange={(v) => setMeta('kontenIsi', v)} />
+                  </div>
+
+                  {/* TINDAK LANJUT */}
+                  <div className="border border-gray-200 rounded-xl p-4 bg-white">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider">Tindak Lanjut / Harapan</div>
+                      <span className="text-xs text-gray-400">(Opsional)</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-3">Arahan atau harapan kepada penerima memo.</p>
+                    <MemoEditor value={form.metadata?.kontenTindakLanjut || ''} onChange={(v) => setMeta('kontenTindakLanjut', v)} />
                   </div>
 
                   {/* PENUTUP */}

@@ -441,9 +441,30 @@ export default function MemoDetailPage() {
                 )}
 
                 <div className={sec}>Isi Memo</div>
-                <div>
-                  <MemoEditor value={editForm.konten} onChange={v => setEditForm(f => ({ ...f, konten: v }))} />
-                </div>
+                {isIP ? (
+                  <div>
+                    <MemoEditor value={editForm.konten} onChange={v => setEditForm(f => ({ ...f, konten: v }))} />
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className={lbl}>Isi Pokok</label>
+                        <span className="text-xs text-red-500">*</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-2">Sampaikan poin-poin utama memo. Gunakan numbered list untuk beberapa poin.</p>
+                      <MemoEditor value={editForm.metadata?.kontenIsi || ''} onChange={v => setEditMeta('kontenIsi', v)} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className={lbl}>Tindak Lanjut / Harapan</label>
+                        <span className="text-xs text-gray-400">(Opsional)</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-2">Arahan atau harapan kepada penerima memo.</p>
+                      <MemoEditor value={editForm.metadata?.kontenTindakLanjut || ''} onChange={v => setEditMeta('kontenTindakLanjut', v)} />
+                    </div>
+                  </>
+                )}
 
                 {!isIP && (
                   <>

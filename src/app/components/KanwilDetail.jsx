@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { Label } from 'recharts'
 import { getMonthInfo, formatDateID } from '../lib/dateUtils'
 import ExportButton from './ExportButton'
 import {
@@ -25,14 +24,13 @@ export default function KanwilDetail({
   posisiKreditMetadata
 }) {
   const [activeTab, setActiveTab] = useState('npl')
-
   const currentKanwil = KANWIL_NAMES[kanwilIndex - 1]
 
   const tabs = [
-    { id: 'npl', label: 'NPL', color: 'blue' },
-    { id: 'kol2', label: 'KOL 2', color: 'blue' },
-    { id: 'realisasi_kredit', label: 'Realisasi Kredit', color: 'blue' },
-    { id: 'posisi_kredit', label: 'Posisi Kredit', color: 'blue' }
+    { id: 'npl', label: 'NPL' },
+    { id: 'kol2', label: 'KOL 2' },
+    { id: 'realisasi_kredit', label: 'Realisasi Kredit' },
+    { id: 'posisi_kredit', label: 'Posisi Kredit' },
   ]
 
   const getActiveData = () => {
@@ -48,139 +46,92 @@ export default function KanwilDetail({
   const { data, metadata } = getActiveData()
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-white">
-      {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 uppercase" style={{ color: '#003d7a' }}>KANWIL {currentKanwil?.toUpperCase()}</h1>
-
-        {/* Tabs */}
-        <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
-          <div className="flex overflow-x-auto">
-            {tabs.map(tab => {
-              const isActive = activeTab === tab.id
-
-              if (isActive) {
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 font-semibold text-xs sm:text-sm transition-all text-white border-b-4 whitespace-nowrap"
-                    style={{ backgroundColor: '#003d7a', borderBottomColor: '#e84e0f' }}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              }
-
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 min-w-[100px] px-3 sm:px-4 py-2 font-semibold text-xs sm:text-sm transition-all bg-gray-50 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
+    <>
+      {/* Metric tab bar */}
+      <div className="flex border-b border-gray-200 overflow-x-auto">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? 'text-[#003d7a] border-[#003d7a]'
+                : 'text-gray-500 border-transparent hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+        <div className="ml-auto flex items-center pr-4">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Kanwil {currentKanwil}
+          </span>
         </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'npl' && <NPLKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
-      {activeTab === 'kol2' && <KOL2KanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
-      {activeTab === 'realisasi_kredit' && <RealisasiKreditKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
-      {activeTab === 'posisi_kredit' && <PosisiKreditKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
-    </div>
+      {/* Content */}
+      <div className="p-6">
+        {activeTab === 'npl' && <NPLKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
+        {activeTab === 'kol2' && <KOL2KanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
+        {activeTab === 'realisasi_kredit' && <RealisasiKreditKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
+        {activeTab === 'posisi_kredit' && <PosisiKreditKanwilContent data={data} metadata={metadata} kanwilName={currentKanwil} />}
+      </div>
+    </>
   )
 }
 
-// NPL Kanwil Content
+// ── NPL ──────────────────────────────────────────────────────────────────────
+
 function NPLKanwilContent({ data, metadata, kanwilName }) {
   if (!data?.kanwilData || !data?.cabangData) {
-    return <div className="text-center py-12 text-gray-500">Belum ada data NPL untuk kanwil ini</div>
+    return <div className="py-12 text-center text-gray-500">Belum ada data NPL untuk kanwil ini</div>
   }
 
   const monthInfo = data.monthInfo || metadata?.monthInfo || getMonthInfo()
   const currentMonth = monthInfo.current
   const previousMonth = monthInfo.previous
-
   const kanwilSummary = data.kanwilData.find(k => k.name === kanwilName) || {}
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.total_current || 0) - (a.total_current || 0))
 
-  const handleExportNPLCabang = () => {
-    if (!cabangList || cabangList.length === 0) {
-      throw new Error('Tidak ada data cabang untuk diekspor')
-    }
-    const pdfData = formatNPLCabangData(cabangList, kanwilName, monthInfo)
-    exportTableToPDF(pdfData)
-  }
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
+  const curLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
+  const prevLabel = previousMonth?.shortLabel || ''
 
-  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
-  const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
-  const previousDateLabel = previousMonth?.shortLabel || formatDateID(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'short')
+  const handleExport = () => {
+    if (!cabangList.length) throw new Error('Tidak ada data cabang untuk diekspor')
+    exportTableToPDF(formatNPLCabangData(cabangList, kanwilName, monthInfo))
+  }
 
   return (
     <>
-      {/* Summary Cards */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary NPL {kanwilName}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total NPL (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.total_current)}</span>
-              <span className="font-semibold" style={{ color: '#003d7a' }}>{(kanwilSummary.totalPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.total_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.totalPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
-
-          <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_current)}</span>
-              <span className="text-green-600 font-semibold">{(kanwilSummary.kumkPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.kumk_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.kumkPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.kur_current)}</span>
-              <span className="font-semibold" style={{ color: '#e84e0f' }}>{(kanwilSummary.kurPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.kur_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.kurPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
+      <div className="mb-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary NPL</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <CompareCard label="Total NPL (Jt)" accent="#003d7a"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.total_current)}`} curPct={`${(kanwilSummary.totalPercent_current || 0).toFixed(2)}%`} curAccent="#003d7a"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.total_previous)}`} prevPct={`${(kanwilSummary.totalPercent_previous || 0).toFixed(2)}%`}
+          />
+          <CompareCard label="KUMK (Jt)" accent="#16a34a"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.kumk_current)}`} curPct={`${(kanwilSummary.kumkPercent_current || 0).toFixed(2)}%`} curAccent="#16a34a"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.kumk_previous)}`} prevPct={`${(kanwilSummary.kumkPercent_previous || 0).toFixed(2)}%`}
+          />
+          <CompareCard label="KUR (Jt)" accent="#e84e0f"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.kur_current)}`} curPct={`${(kanwilSummary.kurPercent_current || 0).toFixed(2)}%`} curAccent="#e84e0f"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.kur_previous)}`} prevPct={`${(kanwilSummary.kurPercent_previous || 0).toFixed(2)}%`}
+          />
         </div>
       </div>
 
-      {/* Cabang Table */}
-      <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
-          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail NPL Per Cabang ({sortedCabang.length})</h2>
-          <ExportButton onClick={handleExportNPLCabang} label="Export PDF" />
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Detail NPL Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExport} label="Export PDF" />
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
-          <table className="w-full min-w-[900px]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
-              <tr className="text-sm">
+              <tr>
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
                 <th className="py-3 px-4 text-right font-semibold">NPL (Jt)</th>
@@ -194,31 +145,23 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
                 <th className="py-3 px-4 text-right font-semibold">Gap</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody>
               {sortedCabang.map((c, i) => {
-                const gapTotalColor = (c.gap_total || 0) > 0 ? 'text-red-600' : (c.gap_total || 0) < 0 ? 'text-green-600' : 'text-gray-500'
-                const gapKumkColor = (c.gap_kumk || 0) > 0 ? 'text-red-600' : (c.gap_kumk || 0) < 0 ? 'text-green-600' : 'text-gray-500'
-                const gapKurColor = (c.gap_kur || 0) > 0 ? 'text-red-600' : (c.gap_kur || 0) < 0 ? 'text-green-600' : 'text-gray-500'
-
+                const gapColor = (v) => v > 0 ? 'text-red-600' : v < 0 ? 'text-green-600' : 'text-gray-400'
+                const gapFmt = (v) => v !== 0 ? `${v > 0 ? '↑' : '↓'} ${f(Math.abs(v))}` : '—'
                 return (
-                  <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">{i + 1}</td>
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4 text-gray-500">{i + 1}</td>
                     <td className="py-3 px-4 font-medium">{c.name}</td>
                     <td className="py-3 px-4 text-right">{f(c.total_current)}</td>
                     <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{(c.totalPercent_current || 0).toFixed(2)}%</td>
-                    <td className={`py-3 px-4 text-right font-semibold ${gapTotalColor}`}>
-                      {(c.gap_total || 0) !== 0 ? ((c.gap_total || 0) > 0 ? '↑' : '↓') + ' ' + f(Math.abs(c.gap_total || 0)) : '-'}
-                    </td>
+                    <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_total || 0)}`}>{gapFmt(c.gap_total || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(c.kumk_current)}</td>
-                    <td className="py-3 px-4 text-right text-green-600">{(c.kumkPercent_current || 0).toFixed(2)}%</td>
-                    <td className={`py-3 px-4 text-right font-semibold ${gapKumkColor}`}>
-                      {(c.gap_kumk || 0) !== 0 ? ((c.gap_kumk || 0) > 0 ? '↑' : '↓') + ' ' + f(Math.abs(c.gap_kumk || 0)) : '-'}
-                    </td>
+                    <td className="py-3 px-4 text-right text-green-700">{(c.kumkPercent_current || 0).toFixed(2)}%</td>
+                    <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_kumk || 0)}`}>{gapFmt(c.gap_kumk || 0)}</td>
                     <td className="py-3 px-4 text-right">{f(c.kur_current)}</td>
                     <td className="py-3 px-4 text-right font-semibold" style={{ color: '#e84e0f' }}>{(c.kurPercent_current || 0).toFixed(2)}%</td>
-                    <td className={`py-3 px-4 text-right font-semibold ${gapKurColor}`}>
-                      {(c.gap_kur || 0) !== 0 ? ((c.gap_kur || 0) > 0 ? '↑' : '↓') + ' ' + f(Math.abs(c.gap_kur || 0)) : '-'}
-                    </td>
+                    <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_kur || 0)}`}>{gapFmt(c.gap_kur || 0)}</td>
                   </tr>
                 )
               })}
@@ -230,90 +173,58 @@ function NPLKanwilContent({ data, metadata, kanwilName }) {
   )
 }
 
-// KOL2 Kanwil Content (similar structure to NPL)
+// ── KOL 2 ────────────────────────────────────────────────────────────────────
+
 function KOL2KanwilContent({ data, metadata, kanwilName }) {
   if (!data?.kanwilData || !data?.cabangData) {
-    return <div className="text-center py-12 text-gray-500">Belum ada data KOL 2 untuk kanwil ini</div>
+    return <div className="py-12 text-center text-gray-500">Belum ada data KOL 2 untuk kanwil ini</div>
   }
 
   const monthInfo = data.monthInfo || metadata?.monthInfo || getMonthInfo()
   const currentMonth = monthInfo.current
   const previousMonth = monthInfo.previous
-
   const kanwilSummary = data.kanwilData.find(k => k.name === kanwilName) || {}
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.total_current || 0) - (a.total_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
-  const currentDateLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
-  const previousDateLabel = previousMonth?.shortLabel || formatDateID(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'short')
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
+  const curLabel = currentMonth?.shortLabel || formatDateID(new Date(), 'short')
+  const prevLabel = previousMonth?.shortLabel || ''
 
-  const handleExportKOL2Cabang = () => {
-    if (!cabangList || cabangList.length === 0) {
-      throw new Error('Tidak ada data cabang untuk diekspor')
-    }
-    const pdfData = formatKOL2CabangData(cabangList, kanwilName, monthInfo)
-    exportTableToPDF(pdfData)
+  const handleExport = () => {
+    if (!cabangList.length) throw new Error('Tidak ada data cabang untuk diekspor')
+    exportTableToPDF(formatKOL2CabangData(cabangList, kanwilName, monthInfo))
   }
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary KOL 2 {kanwilName}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total KOL 2 (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.total_current)}</span>
-              <span className="font-semibold" style={{ color: '#003d7a' }}>{(kanwilSummary.totalPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.total_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.totalPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
-
-          <div className="border-l-4 border-green-500 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_current)}</span>
-              <span className="text-green-600 font-semibold">{(kanwilSummary.kumkPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.kumk_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.kumkPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-gray-500">{currentDateLabel}</span>
-              <span className="text-2xl font-bold">Rp {f(kanwilSummary.kur_current)}</span>
-              <span className="font-semibold" style={{ color: '#e84e0f' }}>{(kanwilSummary.kurPercent_current || 0).toFixed(2)}%</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs text-gray-500">{previousDateLabel}</span>
-              <span className="text-lg text-gray-600">Rp {f(kanwilSummary.kur_previous)}</span>
-              <span className="text-gray-500">{(kanwilSummary.kurPercent_previous || 0).toFixed(2)}%</span>
-            </div>
-          </div>
+      <div className="mb-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary KOL 2</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <CompareCard label="Total KOL 2 (Jt)" accent="#003d7a"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.total_current)}`} curPct={`${(kanwilSummary.totalPercent_current || 0).toFixed(2)}%`} curAccent="#003d7a"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.total_previous)}`} prevPct={`${(kanwilSummary.totalPercent_previous || 0).toFixed(2)}%`}
+          />
+          <CompareCard label="KUMK (Jt)" accent="#16a34a"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.kumk_current)}`} curPct={`${(kanwilSummary.kumkPercent_current || 0).toFixed(2)}%`} curAccent="#16a34a"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.kumk_previous)}`} prevPct={`${(kanwilSummary.kumkPercent_previous || 0).toFixed(2)}%`}
+          />
+          <CompareCard label="KUR (Jt)" accent="#e84e0f"
+            curLabel={curLabel} curValue={`Rp ${f(kanwilSummary.kur_current)}`} curPct={`${(kanwilSummary.kurPercent_current || 0).toFixed(2)}%`} curAccent="#e84e0f"
+            prevLabel={prevLabel} prevValue={`Rp ${f(kanwilSummary.kur_previous)}`} prevPct={`${(kanwilSummary.kurPercent_previous || 0).toFixed(2)}%`}
+          />
         </div>
       </div>
 
-      <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
-          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail KOL 2 Per Cabang ({sortedCabang.length})</h2>
-          <ExportButton onClick={handleExportKOL2Cabang} label="Export PDF" />
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Detail KOL 2 Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExport} label="Export PDF" />
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[700px] text-sm">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
-              <tr className="text-sm">
+              <tr>
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
                 <th className="py-3 px-4 text-right font-semibold">KOL 2 (Jt)</th>
@@ -324,15 +235,15 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
                 <th className="py-3 px-4 text-right font-semibold">%</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody>
               {sortedCabang.map((c, i) => (
-                <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4">{i + 1}</td>
+                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-4 text-gray-500">{i + 1}</td>
                   <td className="py-3 px-4 font-medium">{c.name}</td>
                   <td className="py-3 px-4 text-right">{f(c.total_current)}</td>
                   <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{(c.totalPercent_current || 0).toFixed(2)}%</td>
                   <td className="py-3 px-4 text-right">{f(c.kumk_current)}</td>
-                  <td className="py-3 px-4 text-right text-green-600">{(c.kumkPercent_current || 0).toFixed(2)}%</td>
+                  <td className="py-3 px-4 text-right text-green-700">{(c.kumkPercent_current || 0).toFixed(2)}%</td>
                   <td className="py-3 px-4 text-right">{f(c.kur_current)}</td>
                   <td className="py-3 px-4 text-right font-semibold" style={{ color: '#e84e0f' }}>{(c.kurPercent_current || 0).toFixed(2)}%</td>
                 </tr>
@@ -345,10 +256,11 @@ function KOL2KanwilContent({ data, metadata, kanwilName }) {
   )
 }
 
-// Realisasi Kredit Kanwil Content
+// ── Realisasi Kredit ──────────────────────────────────────────────────────────
+
 function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
   if (!data?.kanwilData || !data?.cabangData) {
-    return <div className="text-center py-12 text-gray-500">Belum ada data Realisasi Kredit untuk kanwil ini</div>
+    return <div className="py-12 text-center text-gray-500">Belum ada data Realisasi Kredit untuk kanwil ini</div>
   }
 
   const monthInfo = data.monthInfo || metadata?.monthInfo || getMonthInfo()
@@ -356,50 +268,41 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.kumk_real_current || 0) - (a.kumk_real_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
 
-  const handleExportRealisasiKreditCabang = () => {
-    if (!cabangList || cabangList.length === 0) {
-      throw new Error('Tidak ada data cabang untuk diekspor')
-    }
-    const pdfData = formatRealisasiKreditCabangData(cabangList, kanwilName, monthInfo)
-    exportTableToPDF(pdfData)
+  const handleExport = () => {
+    if (!cabangList.length) throw new Error('Tidak ada data cabang untuk diekspor')
+    exportTableToPDF(formatRealisasiKreditCabangData(cabangList, kanwilName, monthInfo))
   }
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Realisasi Kredit {kanwilName}</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUMK (Jt)</div>
-            <div className="text-2xl font-bold">Rp {f(kanwilSummary.kumk_real_current || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">1-{monthInfo.current?.day || 26} {monthInfo.current?.shortName || 'Jan'}'26</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#e84e0f' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">KUR (Jt)</div>
-            <div className="text-2xl font-bold">Rp {f(kanwilSummary.kur_total_current || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">Total KUR</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Total Realisasi</div>
-            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.umkm_real_current || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">Total Realisasi</div>
-          </div>
+      <div className="mb-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary Realisasi Kredit</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatCard label="KUMK (Jt)" accent="#003d7a">
+            <div className="text-xl font-bold text-gray-900">Rp {f(kanwilSummary.kumk_real_current)}</div>
+            <div className="text-xs text-gray-500 mt-0.5">1–{monthInfo.current?.day || 26} {monthInfo.current?.shortName || ''}</div>
+          </StatCard>
+          <StatCard label="KUR (Jt)" accent="#e84e0f">
+            <div className="text-xl font-bold text-gray-900">Rp {f(kanwilSummary.kur_total_current)}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Total KUR</div>
+          </StatCard>
+          <StatCard label="Total Realisasi (Jt)" accent="#003d7a">
+            <div className="text-xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.umkm_real_current)}</div>
+          </StatCard>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
-          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Realisasi Kredit Per Cabang ({sortedCabang.length})</h2>
-          <ExportButton onClick={handleExportRealisasiKreditCabang} label="Export PDF" />
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Detail Realisasi Kredit Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExport} label="Export PDF" />
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full min-w-[760px]">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
-              <tr className="text-sm">
+              <tr>
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
                 <th className="py-3 px-4 text-right font-semibold">KUMK (Jt)</th>
@@ -407,18 +310,16 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
                 <th className="py-3 px-4 text-right font-semibold">Total Realisasi (Jt)</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
-              {sortedCabang.map((c, i) => {
-                return (
-                  <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">{i + 1}</td>
-                    <td className="py-3 px-4 font-medium">{c.name}</td>
-                    <td className="py-3 px-4 text-right">{f(c.kumk_real_current || 0)}</td>
-                    <td className="py-3 px-4 text-right">{f(c.kur_total_current || 0)}</td>
-                    <td className="py-3 px-4 text-right font-semibold">{f(c.umkm_real_current || 0)}</td>
-                  </tr>
-                )
-              })}
+            <tbody>
+              {sortedCabang.map((c, i) => (
+                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-4 text-gray-500">{i + 1}</td>
+                  <td className="py-3 px-4 font-medium">{c.name}</td>
+                  <td className="py-3 px-4 text-right">{f(c.kumk_real_current)}</td>
+                  <td className="py-3 px-4 text-right">{f(c.kur_total_current)}</td>
+                  <td className="py-3 px-4 text-right font-semibold">{f(c.umkm_real_current)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -427,10 +328,11 @@ function RealisasiKreditKanwilContent({ data, metadata, kanwilName }) {
   )
 }
 
-// Posisi Kredit Kanwil Content
+// ── Posisi Kredit ─────────────────────────────────────────────────────────────
+
 function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
   if (!data?.kanwilData || !data?.cabangData) {
-    return <div className="text-center py-12 text-gray-500">Belum ada data Posisi Kredit untuk kanwil ini</div>
+    return <div className="py-12 text-center text-gray-500">Belum ada data Posisi Kredit untuk kanwil ini</div>
   }
 
   const monthInfo = data.monthInfo || metadata?.monthInfo || getMonthInfo()
@@ -438,57 +340,46 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.posisi_current || 0) - (a.posisi_current || 0))
 
-  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n || 0)
+  const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
+  const gapColor = (value) => value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-gray-500'
 
-  const handleExportPosisiKreditCabang = () => {
-    if (!cabangList || cabangList.length === 0) {
-      throw new Error('Tidak ada data cabang untuk diekspor')
-    }
-    const pdfData = formatPosisiKreditCabangData(cabangList, kanwilName, monthInfo)
-    exportTableToPDF(pdfData)
+  const handleExport = () => {
+    if (!cabangList.length) throw new Error('Tidak ada data cabang untuk diekspor')
+    exportTableToPDF(formatPosisiKreditCabangData(cabangList, kanwilName, monthInfo))
   }
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-3 uppercase" style={{ color: '#003d7a' }}>Summary Posisi Kredit {kanwilName}</h2>
-        <div className="grid grid-cols-5 gap-3">
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Posisi Awal Jan</div>
-            <div className="text-xl font-bold">Rp {f(kanwilSummary.posisi_jan || 0)}</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Realisasi</div>
-            <div className="text-xl font-bold">Rp {f(kanwilSummary.realisasi || 0)}</div>
-          </div>
-
-          <div className="border-l-4 border-red-500 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Run Off</div>
-            <div className="text-xl font-bold">Rp {f(kanwilSummary.runoff || 0)}</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Posisi Current</div>
-            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.posisi_current || 0)}</div>
-          </div>
-
-          <div className="border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-            <div className="text-sm text-gray-600 mb-1 uppercase font-medium">Gap YoY</div>
-            <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.gap_yoy || 0)}</div>
-          </div>
+      <div className="mb-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary Posisi Kredit</p>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <StatCard label="Posisi Awal Jan" accent="#003d7a">
+            <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.posisi_jan)}</div>
+          </StatCard>
+          <StatCard label="Realisasi" accent="#003d7a">
+            <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.realisasi)}</div>
+          </StatCard>
+          <StatCard label="Run Off" accent="#ef4444">
+            <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.runoff)}</div>
+          </StatCard>
+          <StatCard label="Posisi Current" accent="#003d7a">
+            <div className="text-lg font-bold" style={{ color: '#003d7a' }}>Rp {f(kanwilSummary.posisi_current)}</div>
+          </StatCard>
+          <StatCard label="Gap YoY" accent="#003d7a">
+            <div className={`text-lg font-bold ${gapColor(kanwilSummary.gap_yoy || 0)}`}>Rp {f(kanwilSummary.gap_yoy)}</div>
+          </StatCard>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-300 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
-          <h2 className="text-lg font-bold uppercase" style={{ color: '#003d7a' }}>Detail Posisi Kredit Per Cabang ({sortedCabang.length})</h2>
-          <ExportButton onClick={handleExportPosisiKreditCabang} label="Export PDF" />
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Detail Posisi Kredit Per Cabang ({sortedCabang.length})</h2>
+          <ExportButton onClick={handleExport} label="Export PDF" />
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="sticky top-0 text-white" style={{ backgroundColor: '#003d7a' }}>
-              <tr className="text-sm">
+              <tr>
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
                 <th className="py-3 px-4 text-right font-semibold">Posisi Awal (Jt)</th>
@@ -497,15 +388,15 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
                 <th className="py-3 px-4 text-right font-semibold">Gap YoY (Jt)</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody>
               {sortedCabang.map((c, i) => (
-                <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4">{i + 1}</td>
+                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-4 text-gray-500">{i + 1}</td>
                   <td className="py-3 px-4 font-medium">{c.name}</td>
-                  <td className="py-3 px-4 text-right">{f(c.posisi_jan || 0)}</td>
-                  <td className="py-3 px-4 text-right font-semibold">{f(c.posisi_current || 0)}</td>
-                  <td className="py-3 px-4 text-right">{f(c.gap_mtd || 0)}</td>
-                  <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(c.gap_yoy || 0)}</td>
+                  <td className="py-3 px-4 text-right">{f(c.posisi_jan)}</td>
+                  <td className="py-3 px-4 text-right font-semibold">{f(c.posisi_current)}</td>
+                  <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_mtd || 0)}`}>{f(c.gap_mtd)}</td>
+                  <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_yoy || 0)}`}>{f(c.gap_yoy)}</td>
                 </tr>
               ))}
             </tbody>
@@ -513,5 +404,36 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
         </div>
       </div>
     </>
+  )
+}
+
+// ── Shared ───────────────────────────────────────────────────────────────────
+
+function StatCard({ label, accent = '#003d7a', children }) {
+  return (
+    <div className="bg-gray-50 border-l-4 rounded-xl p-4" style={{ borderLeftColor: accent }}>
+      <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">{label}</div>
+      {children}
+    </div>
+  )
+}
+
+function CompareCard({ label, accent, curLabel, curValue, curPct, curAccent, prevLabel, prevValue, prevPct }) {
+  return (
+    <div className="bg-gray-50 border-l-4 rounded-xl p-4" style={{ borderLeftColor: accent }}>
+      <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">{label}</div>
+      <div className="flex items-baseline gap-1.5 mb-0.5">
+        <span className="text-xs text-gray-400">{curLabel}</span>
+        <span className="text-xl font-bold text-gray-900">{curValue}</span>
+        <span className="text-sm font-semibold" style={{ color: curAccent }}>{curPct}</span>
+      </div>
+      {prevLabel && (
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xs text-gray-400">{prevLabel}</span>
+          <span className="text-sm text-gray-500">{prevValue}</span>
+          <span className="text-xs text-gray-400">{prevPct}</span>
+        </div>
+      )}
+    </div>
   )
 }

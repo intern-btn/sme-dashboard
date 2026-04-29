@@ -249,9 +249,16 @@ export default function MemoPreview({ form }) {
           </div>
         )}
 
-        <div
-          dangerouslySetInnerHTML={{ __html: konten || '<p style="color:#aaa">[Isi memo...]</p>' }}
-        />
+        {(category === 'general' && meta?.kontenIsi) ? (
+          <>
+            <div dangerouslySetInnerHTML={{ __html: meta.kontenIsi }} />
+            {meta?.kontenTindakLanjut && (
+              <div style={{ marginTop: '6pt' }} dangerouslySetInnerHTML={{ __html: meta.kontenTindakLanjut }} />
+            )}
+          </>
+        ) : (
+          <div dangerouslySetInnerHTML={{ __html: konten || '<p style="color:#aaa">[Isi memo...]</p>' }} />
+        )}
 
         {shouldRenderClosing && (
           <div style={{ marginTop: '6pt' }}>

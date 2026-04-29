@@ -58,60 +58,82 @@ export default function Realisasi({ data }) {
     exportTableToPDF(pdfData)
   }
 
+  const lineConfigs = [
+    {
+      key: 'total',
+      currentKey: 'currentTotal',
+      previousKey: 'previousTotal',
+      currentName: currentMonth?.fullLabel || 'Bulan Ini',
+      previousName: previousMonth?.fullLabel || 'Bulan Lalu',
+    },
+    {
+      key: 'kur',
+      currentKey: 'currentKur',
+      previousKey: 'previousKur',
+      currentName: `KUR ${currentMonth?.name || 'Bulan Ini'}`,
+      previousName: `KUR ${previousMonth?.name || 'Bulan Lalu'}`,
+    },
+    {
+      key: 'kumk',
+      currentKey: 'currentKumk',
+      previousKey: 'previousKumk',
+      currentName: `KUMK ${currentMonth?.name || 'Bulan Ini'}`,
+      previousName: `KUMK ${previousMonth?.name || 'Bulan Lalu'}`,
+    },
+    {
+      key: 'kppSupply',
+      currentKey: 'currentKppSupply',
+      previousKey: 'previousKppSupply',
+      currentName: `KPP Supply ${currentMonth?.name || 'Bulan Ini'}`,
+      previousName: `KPP Supply ${previousMonth?.name || 'Bulan Lalu'}`,
+    },
+    {
+      key: 'kppDemand',
+      currentKey: 'currentKppDemand',
+      previousKey: 'previousKppDemand',
+      currentName: `KPP Demand ${currentMonth?.name || 'Bulan Ini'}`,
+      previousName: `KPP Demand ${previousMonth?.name || 'Bulan Lalu'}`,
+    },
+  ]
+
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 fade-in bg-white">
-      {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 uppercase" style={{ color: '#003d7a' }}>
-          REALISASI KREDIT SME HARIAN
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base lg:text-lg">
-          Perbandingan s.d. tanggal {maxDay} {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
-        </p>
-      </div>
+    <div className="p-6">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        Perbandingan s.d. tanggal {maxDay} — {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
+      </p>
 
       {/* Monthly Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-        <div className="bg-gray-50 border-l-4 border-purple-600 rounded-lg p-5 shadow-sm">
-          <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
-          <div className="text-3xl font-bold text-gray-900">
-            Rp {formatJt(previousTotal)} Jt
-          </div>
-          <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+        <div className="bg-gray-50 border-l-4 border-purple-600 rounded-xl p-4">
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">{previousMonth?.fullLabel || 'Bulan Lalu'}</div>
+          <div className="text-2xl font-bold text-gray-900">Rp {formatJt(previousTotal)} Jt</div>
+          <div className="text-xs text-gray-400 mt-1">s.d. tanggal {maxDay}</div>
         </div>
 
-        <div className="bg-gray-50 border-l-4 rounded-lg p-5 shadow-sm" style={{ borderLeftColor: '#003d7a' }}>
-          <div className="text-gray-600 text-sm mb-1 font-medium uppercase">{currentMonth?.fullLabel || 'Bulan Ini'}</div>
-          <div className="text-3xl font-bold" style={{ color: '#003d7a' }}>
-            Rp {formatJt(currentTotal)} Jt
-          </div>
-          <div className="text-xs text-gray-500 mt-1">s.d. tanggal {maxDay}</div>
+        <div className="bg-gray-50 border-l-4 rounded-xl p-4" style={{ borderLeftColor: '#003d7a' }}>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">{currentMonth?.fullLabel || 'Bulan Ini'}</div>
+          <div className="text-2xl font-bold" style={{ color: '#003d7a' }}>Rp {formatJt(currentTotal)} Jt</div>
+          <div className="text-xs text-gray-400 mt-1">s.d. tanggal {maxDay}</div>
         </div>
 
-        <div className={`bg-gray-50 rounded-lg p-5 border-l-4 shadow-sm ${
-          growth >= 0
-            ? 'border-green-600'
-            : 'border-red-600'
-        }`}>
-          <div className={`text-sm mb-1 font-medium uppercase ${growth >= 0 ? 'text-gray-600' : 'text-gray-600'}`}>
-            Pertumbuhan
-          </div>
-          <div className={`text-3xl font-bold ${growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <div className={`bg-gray-50 border-l-4 rounded-xl p-4 ${growth >= 0 ? 'border-green-600' : 'border-red-600'}`}>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">Pertumbuhan MTD</div>
+          <div className={`text-2xl font-bold ${growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {growth >= 0 ? '+' : ''}{growth.toFixed(2)}%
           </div>
-          <div className="text-xs text-gray-500 mt-1">vs {previousMonth?.name || 'Bulan Lalu'} MTD</div>
+          <div className="text-xs text-gray-400 mt-1">vs {previousMonth?.name || 'Bulan Lalu'}</div>
         </div>
       </div>
 
       {/* Tabbed Comparison Chart */}
-      <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6 shadow-sm">
+      <div className="border border-gray-200 rounded-xl p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
             Perbandingan {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
           </h2>
 
           {/* Tabs */}
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg overflow-x-auto">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto flex-shrink-0">
             <button
               onClick={() => setActiveView('total')}
               className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
@@ -170,160 +192,82 @@ export default function Realisasi({ data }) {
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart
-            data={comparisonData}
-            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis
-              dataKey="date"
-              stroke="#6B7280"
-              label={{ value: 'Tanggal', position: 'insideBottom', offset: -5, fill: '#6B7280' }}
-              style={{ fontSize: '12px' }}
-            />
-            <YAxis
-              stroke="#6B7280"
-              tickFormatter={(value) => formatJt(value)}
-              label={{ value: 'Realisasi (Jt)', angle: -90, position: 'insideLeft', fill: '#6B7280' }}
-              style={{ fontSize: '12px' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#FFFFFF',
-                border: '2px solid #1976D2',
-                borderRadius: '8px',
-                color: '#1F2937',
-                padding: '12px'
-              }}
-              formatter={(value) => `Rp ${formatJt(value)} Jt`}
-              labelFormatter={(label) => `Tanggal ${label}`}
-            />
-            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+        <div style={{ width: '100%', height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={comparisonData}
+              margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis
+                dataKey="date"
+                stroke="#6B7280"
+                label={{ value: 'Tanggal', position: 'insideBottom', offset: -5, fill: '#6B7280' }}
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis
+                stroke="#6B7280"
+                tickFormatter={(value) => formatJt(value)}
+                label={{ value: 'Realisasi (Jt)', angle: -90, position: 'insideLeft', fill: '#6B7280' }}
+                style={{ fontSize: '12px' }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '2px solid #1976D2',
+                  borderRadius: '8px',
+                  color: '#1F2937',
+                  padding: '12px'
+                }}
+                formatter={(value) => `Rp ${formatJt(value)} Jt`}
+                labelFormatter={(label) => `Tanggal ${label}`}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
-            {activeView === 'total' && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="currentTotal"
-                  stroke="#1976D2"
-                  strokeWidth={3}
-                  name={currentMonth?.fullLabel || 'Bulan Ini'}
-                  dot={{ fill: '#1976D2', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previousTotal"
-                  stroke="#9333EA"
-                  strokeWidth={3}
-                  name={previousMonth?.fullLabel || 'Bulan Lalu'}
-                  dot={{ fill: '#9333EA', r: 4 }}
-                  strokeDasharray="5 5"
-                />
-              </>
-            )}
+              {lineConfigs.map((config) => {
+                const hidden = activeView !== config.key
 
-            {activeView === 'kur' && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="currentKur"
-                  stroke="#1976D2"
-                  strokeWidth={3}
-                  name={`KUR ${currentMonth?.name || 'Bulan Ini'}`}
-                  dot={{ fill: '#1976D2', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previousKur"
-                  stroke="#9333EA"
-                  strokeWidth={3}
-                  name={`KUR ${previousMonth?.name || 'Bulan Lalu'}`}
-                  dot={{ fill: '#9333EA', r: 4 }}
-                  strokeDasharray="5 5"
-                />
-              </>
-            )}
-
-            {activeView === 'kumk' && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="currentKumk"
-                  stroke="#1976D2"
-                  strokeWidth={3}
-                  name={`KUMK ${currentMonth?.name || 'Bulan Ini'}`}
-                  dot={{ fill: '#1976D2', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previousKumk"
-                  stroke="#9333EA"
-                  strokeWidth={3}
-                  name={`KUMK ${previousMonth?.name || 'Bulan Lalu'}`}
-                  dot={{ fill: '#9333EA', r: 4 }}
-                  strokeDasharray="5 5"
-                />
-              </>
-            )}
-
-            {activeView === 'kppSupply' && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="currentKppSupply"
-                  stroke="#1976D2"
-                  strokeWidth={3}
-                  name={`KPP Supply ${currentMonth?.name || 'Bulan Ini'}`}
-                  dot={{ fill: '#1976D2', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previousKppSupply"
-                  stroke="#9333EA"
-                  strokeWidth={3}
-                  name={`KPP Supply ${previousMonth?.name || 'Bulan Lalu'}`}
-                  dot={{ fill: '#9333EA', r: 4 }}
-                  strokeDasharray="5 5"
-                />
-              </>
-            )}
-
-            {activeView === 'kppDemand' && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="currentKppDemand"
-                  stroke="#1976D2"
-                  strokeWidth={3}
-                  name={`KPP Demand ${currentMonth?.name || 'Bulan Ini'}`}
-                  dot={{ fill: '#1976D2', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previousKppDemand"
-                  stroke="#9333EA"
-                  strokeWidth={3}
-                  name={`KPP Demand ${previousMonth?.name || 'Bulan Lalu'}`}
-                  dot={{ fill: '#9333EA', r: 4 }}
-                  strokeDasharray="5 5"
-                />
-              </>
-            )}
-          </LineChart>
-        </ResponsiveContainer>
+                return (
+                  [
+                    <Line
+                      key={`${config.key}-current`}
+                      hide={hidden}
+                      legendType={hidden ? 'none' : undefined}
+                      type="monotone"
+                      dataKey={config.currentKey}
+                      stroke="#1976D2"
+                      strokeWidth={3}
+                      name={config.currentName}
+                      dot={{ fill: '#1976D2', r: 4 }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={false}
+                    />,
+                    <Line
+                      key={`${config.key}-previous`}
+                      hide={hidden}
+                      legendType={hidden ? 'none' : undefined}
+                      type="monotone"
+                      dataKey={config.previousKey}
+                      stroke="#9333EA"
+                      strokeWidth={3}
+                      name={config.previousName}
+                      dot={{ fill: '#9333EA', r: 4 }}
+                      strokeDasharray="5 5"
+                      isAnimationActive={false}
+                    />
+                  ]
+                )
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Daily Table */}
-      <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-gray-300 flex items-center justify-between" style={{ backgroundColor: '#f8f9fa' }}>
-          <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
-            Realisasi Per Hari - {currentMonth?.fullLabel || 'Bulan Ini'}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+            Realisasi Per Hari — {currentMonth?.fullLabel || 'Bulan Ini'}
           </h2>
           <ExportButton onClick={handleExportRealisasiHarian} label="Export PDF" />
         </div>
@@ -397,10 +341,6 @@ export default function Realisasi({ data }) {
         </div>
       </div>
 
-      {/* Navigation hint */}
-      <div className="mt-6 text-center text-gray-500 text-sm">
-        <p>Klik navigasi di bawah untuk kembali ke Dashboard</p>
-      </div>
     </div>
   )
 }

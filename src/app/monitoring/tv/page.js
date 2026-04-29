@@ -23,7 +23,7 @@ export default function MonitoringTvPage() {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
   }
 
-  const { isEnabled, isPaused, countdown, toggleEnabled } = useAutoSlide({
+  const { isEnabled, isPaused, countdown, toggleEnabled, isHydrated } = useAutoSlide({
     onNext: handleNext,
     interval: 30000,
     disabled: false,
@@ -81,7 +81,13 @@ export default function MonitoringTvPage() {
       </div>
 
       <ProgressIndicator currentPage={currentPage} pageName={pageName()} onNavigate={goToPage} />
-      <AutoSlideIndicator isEnabled={isEnabled} isPaused={isPaused} countdown={countdown} onToggle={toggleEnabled} />
+      <AutoSlideIndicator
+        isEnabled={isEnabled}
+        isPaused={isPaused}
+        countdown={countdown}
+        isHydrated={isHydrated}
+        onToggle={toggleEnabled}
+      />
       <DataRefreshIndicator metadata={nplMetadata} />
     </main>
   )

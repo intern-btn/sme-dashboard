@@ -3,23 +3,27 @@
 import { useState, useEffect } from 'react'
 
 export function useAutoSlide({ onNext, interval = 30000, disabled = false }) {
-  const [isEnabled, setIsEnabled] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('autoSlideEnabled')
-      return saved !== null ? saved === 'true' : true
-    }
-    return true
-  })
+  const [isEnabled, setIsEnabled] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
   const [countdown, setCountdown] = useState(Math.floor(interval / 1000))
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('autoSlideEnabled')
+    if (saved !== null) {
+      setIsEnabled(saved === 'true')
+    }
+    setIsHydrated(true)
+  }, [])
 
   // Save preference to localStorage
   useEffect(() => {
+    if (!isHydrated) return
     localStorage.setItem('autoSlideEnabled', isEnabled.toString())
-  }, [isEnabled])
+  }, [isEnabled, isHydrated])
 
   useEffect(() => {
-    if (!isEnabled || isPaused || disabled) return
+    if (!isHydrated || !isEnabled || isPaused || disabled) return
 
     // Countdown timer
     const countdownInterval = setInterval(() => {
@@ -33,10 +37,12 @@ export function useAutoSlide({ onNext, interval = 30000, disabled = false }) {
     }, 1000)
 
     return () => clearInterval(countdownInterval)
-  }, [isEnabled, isPaused, onNext, interval, disabled])
+  }, [isEnabled, isPaused, onNext, interval, disabled, isHydrated])
 
   // Listen for Enter key to pause/resume (only when enabled)
   useEffect(() => {
+    if (!isHydrated) return
+
     const handleKeyPress = (e) => {
       if (e.key === 'Enter' && isEnabled) {
         setIsPaused(prev => !prev)
@@ -46,7 +52,7 @@ export function useAutoSlide({ onNext, interval = 30000, disabled = false }) {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [interval, isEnabled])
+  }, [interval, isEnabled, isHydrated])
 
   const toggleEnabled = () => {
     setIsEnabled(prev => !prev)
@@ -54,5 +60,5 @@ export function useAutoSlide({ onNext, interval = 30000, disabled = false }) {
     setCountdown(Math.floor(interval / 1000))
   }
 
-  return { isEnabled, isPaused, countdown, toggleEnabled }
+  return { isEnabled, isPaused, countdown, toggleEnabled, isHydrated }
 }

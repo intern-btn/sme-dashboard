@@ -1,6 +1,8 @@
 'use client'
 
-export default function AutoSlideIndicator({ isEnabled, isPaused, countdown, onToggle }) {
+export default function AutoSlideIndicator({ isEnabled, isPaused, countdown, isHydrated, onToggle }) {
+  if (!isHydrated) return null
+
   return (
     <div className="fixed bottom-8 right-8 z-50">
       <button

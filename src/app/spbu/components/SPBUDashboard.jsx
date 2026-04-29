@@ -43,10 +43,7 @@ export default function SPBUDashboard({ trend, mergedRows }) {
   const foundCount = foundRows.length
   const delayedCount = Math.max(0, totalDebitur - foundCount)
 
-  const kol2PlusCount = foundRows.reduce((sum, r) => {
-    const kolNum = toKolNum(r?.kol)
-    return sum + (kolNum && kolNum >= 2 ? 1 : 0)
-  }, 0)
+  const totalAmtrel = foundRows.reduce((sum, r) => sum + (Number(r?.amtrel) || 0), 0)
 
   const totalBakiDebetFound = foundRows.reduce((sum, r) => sum + (Number(r?.bakiDebet) || 0), 0)
 
@@ -67,7 +64,7 @@ export default function SPBUDashboard({ trend, mergedRows }) {
         <Card title="Total Debitur" value={totalDebitur} />
         <Card title="Ditemukan di IDAS" value={foundCount} />
         <Card title="Tidak di IDAS (Delayed)" value={delayedCount} warn />
-        <Card title="KOL 2+" value={kol2PlusCount} />
+        <Card title="Total Pencairan (AMTREL)" value={formatRp(totalAmtrel)} accent />
         <Card title="Total Baki Debet (IDAS)" value={formatRp(totalBakiDebetFound)} accent />
       </div>
 
