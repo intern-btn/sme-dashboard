@@ -3,8 +3,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useDataFetch } from '../../hooks/useDataFetch'
 import AppHeader from '../../components/AppHeader'
-import BPJSDashboard from '../../bpjs/components/BPJSDashboard'
-import BPJSTable from '../../bpjs/components/BPJSTable'
+import IndomaretDashboard from '../../indomaret/components/IndomaretDashboard'
+import IndomaretTable from '../../indomaret/components/IndomaretTable'
 
 const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
@@ -21,7 +21,7 @@ function normKey(s) {
   return String(s || '').trim()
 }
 
-export default function MonitoringBPJSPage() {
+export default function MonitoringIndomaretPage() {
   const [user, setUser] = useState(null)
   useEffect(() => {
     fetch('/api/auth/check')
@@ -30,9 +30,9 @@ export default function MonitoringBPJSPage() {
       .catch(() => setUser(null))
   }, [])
 
-  const { data: idasData, metadata, loading, error, noData, refresh } = useDataFetch('bpjs')
-  const { data: masterData, metadata: masterMeta } = useDataFetch('bpjs_manual')
-  const { data: trendData } = useDataFetch('bpjs_trend')
+  const { data: idasData, metadata, loading, error, noData, refresh } = useDataFetch('indomaret')
+  const { data: masterData, metadata: masterMeta } = useDataFetch('indomaret_manual')
+  const { data: trendData } = useDataFetch('indomaret_trend')
 
   const [filters, setFilters] = useState({
     cabang: '',
@@ -105,7 +105,7 @@ export default function MonitoringBPJSPage() {
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">BPJS Monitoring</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Indomaret Monitoring</h1>
             <p className="text-sm text-gray-500 mt-1">
               IDAS: {idasDate}
               {metadata?.uploadDate ? ` • Upload: ${new Date(metadata.uploadDate).toLocaleString('id-ID')}` : ''}
@@ -129,7 +129,7 @@ export default function MonitoringBPJSPage() {
 
         {!loading && (error || noData) && (
           <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <div className="text-gray-700 font-medium">Belum ada data BPJS.</div>
+            <div className="text-gray-700 font-medium">Belum ada data Indomaret.</div>
             {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
             <div className="text-sm text-gray-500 mt-2">
               Upload via <a href="/admin" className="text-blue-700 underline">Admin Portal</a>.
@@ -141,14 +141,14 @@ export default function MonitoringBPJSPage() {
           <>
             {Array.isArray(masterData?.rows) && masterData.rows.length > 0 ? (
               <>
-                <BPJSDashboard
+                <IndomaretDashboard
                   idas={idasData}
                   master={masterData}
                   trend={trendData}
                   mergedRows={mergedRows}
                 />
                 <div className="mt-6">
-                  <BPJSTable
+                  <IndomaretTable
                     rows={filteredRows}
                     cabangList={cabangList}
                     filters={filters}
@@ -161,7 +161,7 @@ export default function MonitoringBPJSPage() {
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <div className="text-gray-800 font-semibold">Master file belum diupload.</div>
                 <div className="text-sm text-gray-500 mt-1">
-                  Upload <span className="font-mono">ref_BPJS.xlsx</span> (sheet Monitoring BPJS) via{' '}
+                  Upload <span className="font-mono">ref_Indomaret.xlsx</span> (sheet Monitoring Indomaret) via{' '}
                   <a href="/admin" className="text-blue-700 underline">Admin Portal</a>.
                 </div>
               </div>

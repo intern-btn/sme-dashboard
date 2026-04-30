@@ -10,6 +10,7 @@ const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
   { href: '/monitoring/spbu', label: 'PRK SPBU' },
   { href: '/monitoring/bpjs', label: 'BPJS' },
+  { href: '/monitoring/indomaret', label: 'Indomaret' },
 ]
 
 function normName(s) {
@@ -44,6 +45,15 @@ export default function MonitoringSPBUPage() {
     const idasRows = Array.isArray(idasData?.rows) ? idasData.rows : []
     const masterRows = Array.isArray(masterData?.rows) ? masterData.rows : []
 
+    console.log('[SPBU merge] idasRows:', idasRows.length, '| masterRows:', masterRows.length)
+    if (idasRows.length > 0) {
+      console.log('[SPBU merge] Sample IDAS noRekening:', idasRows.slice(0, 5).map(r => JSON.stringify(r?.noRekening)))
+    }
+    if (masterRows.length > 0) {
+      console.log('[SPBU merge] Sample master noDebitur:', masterRows.slice(0, 5).map(r => JSON.stringify(r?.noDebitur)))
+      console.log('[SPBU merge] Sample master nama:', masterRows.slice(0, 5).map(r => JSON.stringify(r?.nama)))
+    }
+
     const idasByRek = new Map()
     const idasByNama = new Map()
     for (const r of idasRows) {
@@ -59,6 +69,10 @@ export default function MonitoringSPBUPage() {
       const byRek = idasByRek.get(normKey(m?.noDebitur))
       const byNama = idasByNama.get(normName(m?.nama))
       const idas = byRek || byNama || null
+      if (!idas && masterRows.indexOf(m) < 3) {
+        console.log('[SPBU merge] NO MATCH for master row:', JSON.stringify({ noDebitur: m?.noDebitur, nama: m?.nama }))
+        console.log('[SPBU merge]   → tried noDebitur key:', JSON.stringify(normKey(m?.noDebitur)))
+      }
       return {
         ...m,
         idasFound: !!idas,

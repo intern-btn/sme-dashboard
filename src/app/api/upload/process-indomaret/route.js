@@ -64,38 +64,38 @@ export async function POST(request) {
     const storage = getStorage()
 
     if (!parsedIdas && parsedManual) {
-      await storage.put('bpjs_manual_parsed.json', parsedManual)
-      await storage.put('bpjs_manual_metadata.json', { filename: manualFilename || 'ref_BPJS.xlsx', uploadDate })
+      await storage.put('indomaret_manual_parsed.json', parsedManual)
+      await storage.put('indomaret_manual_metadata.json', { filename: manualFilename || 'ref_Indomaret.xlsx', uploadDate })
       return NextResponse.json({ success: true, manualOnly: true })
     }
 
     const inferredIdasDate = idasDate || parsedIdas?.idasDate || uploadDate.split('T')[0]
     const stats = parsedIdas?.summary || {}
 
-    await storage.put('bpjs_parsed.json', parsedIdas)
-    await storage.put('bpjs_metadata.json', {
-      filename: idasFilename || 'IDAS_BPJS.xlsx',
+    await storage.put('indomaret_parsed.json', parsedIdas)
+    await storage.put('indomaret_metadata.json', {
+      filename: idasFilename || 'IDAS_INDOMARET.xlsx',
       uploadDate,
       idasDate: inferredIdasDate,
       stats,
     })
 
     if (parsedManual) {
-      await storage.put('bpjs_manual_parsed.json', parsedManual)
-      await storage.put('bpjs_manual_metadata.json', { filename: manualFilename || 'ref_BPJS.xlsx', uploadDate })
+      await storage.put('indomaret_manual_parsed.json', parsedManual)
+      await storage.put('indomaret_manual_metadata.json', { filename: manualFilename || 'ref_Indomaret.xlsx', uploadDate })
     }
 
-    const existingTrend = (await storage.get('bpjs_trend_parsed.json')) || { points: [] }
+    const existingTrend = (await storage.get('indomaret_trend_parsed.json')) || { points: [] }
     const points = Array.isArray(existingTrend?.points) ? existingTrend.points : []
     const nextPoint = toPoint(parsedIdas, inferredIdasDate)
     const filtered = points.filter((p) => p?.date !== nextPoint.date)
     filtered.push(nextPoint)
     filtered.sort((a, b) => String(a.date).localeCompare(String(b.date)))
 
-    await storage.put('bpjs_trend_parsed.json', { points: filtered })
-    await storage.put('bpjs_trend_metadata.json', { uploadDate })
+    await storage.put('indomaret_trend_parsed.json', { points: filtered })
+    await storage.put('indomaret_trend_metadata.json', { uploadDate })
 
-    await storage.put(`history/${uploadId}_bpjs.json`, parsedIdas, { allowOverwrite: false })
+    await storage.put(`history/${uploadId}_indomaret.json`, parsedIdas, { allowOverwrite: false })
 
     const historyIndex = (await storage.get('history_index.json')) || { entries: [] }
     historyIndex.entries.push({
@@ -103,19 +103,19 @@ export async function POST(request) {
       uploadDate,
       monthInfo: null,
       files: [idasFilename, parsedManual ? manualFilename : null].filter(Boolean),
-      bpjs: true,
+      indomaret: true,
     })
     historyIndex.entries = historyIndex.entries
       .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate))
       .slice(0, 100)
     await storage.put('history_index.json', historyIndex)
 
-    const masterRows = parsedManual?.rows ?? (await storage.get('bpjs_manual_parsed.json'))?.rows ?? []
+    const masterRows = parsedManual?.rows ?? (await storage.get('indomaret_manual_parsed.json'))?.rows ?? []
     const mergeStats = computeMergeStats(parsedIdas, masterRows)
 
     return NextResponse.json({ success: true, idasDate: inferredIdasDate, stats: mergeStats || stats })
   } catch (error) {
-    console.error('BPJS upload error:', error)
+    console.error('Indomaret upload error:', error)
     return NextResponse.json({ error: 'Upload failed', details: error.message }, { status: 500 })
   }
 }

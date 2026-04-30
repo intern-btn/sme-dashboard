@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const storage = getStorage()
 
-    const [npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu, bpjs] = await Promise.all([
+    const [npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu, bpjs, indomaret] = await Promise.all([
       storage.get('npl_metadata.json'),
       storage.get('kol2_metadata.json'),
       storage.get('realisasi_metadata.json'),
@@ -15,9 +15,10 @@ export async function GET() {
       storage.get('posisi_kredit_metadata.json'),
       storage.get('prk_spbu_metadata.json'),
       storage.get('bpjs_metadata.json'),
+      storage.get('indomaret_metadata.json'),
     ])
 
-    return NextResponse.json({ npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu, bpjs })
+    return NextResponse.json({ npl, kol2, realisasi, realisasi_kredit, posisi_kredit, prk_spbu, bpjs, indomaret })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

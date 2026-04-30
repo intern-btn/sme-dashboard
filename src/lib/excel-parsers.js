@@ -1,6 +1,22 @@
 import * as XLSX from 'xlsx'
 
 // ============================================
+// SHARED UPLOAD UTILITIES
+// ============================================
+
+export function dateFromFilename(filename) {
+  const name = String(filename || '')
+  const m = name.match(/(\d{2})(\d{2})(\d{2,4})/)
+  if (!m) return null
+  const dd = parseInt(m[1], 10)
+  const mm = parseInt(m[2], 10)
+  let yyyy = parseInt(m[3], 10)
+  if (yyyy < 100) yyyy += 2000
+  const d = new Date(Date.UTC(yyyy, mm - 1, dd))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+}
+
+// ============================================
 // MONTH PARSING UTILITIES
 // ============================================
 
@@ -837,142 +853,151 @@ export function parsePosisiKreditExcel(workbook) {
 }
 
 // ============================================
-// PRK SPBU PARSERS
+// SPBU / BPJS PARSERS
 // ============================================
 
-export function parseIDASforSPBU(workbook) {
-  const sheetName = 'Page1_1(2)'
-  const sheet = workbook.Sheets[sheetName]
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+const SPBU_PRODUCT_MATCHERS = [
+  'B8. KUMK PRK',
+  'BZ. KUMK PRK',
+  'LL. SME - KMK PRK',
+  'M8. SME - KMK PRK SPBU',
+  'EY. KUMK KMK PRK SPBU PERTAMINA',
+  'K4. PRK - KUR',
+].map((s) => s.toLowerCase())
 
-  // Corrected: pre-filtered IDAS export (8 fixed columns; header is always row 0)
-  // NO | TIPE PRODUK | NO. REKENING | NAMA | BAKI DEBET | PLAFOND | AMTREL | KOL
-  const header0 = Array.isArray(data[0]) ? data[0].map((c) => String(c || '').trim().toUpperCase()) : []
-  const isPrefilteredIDAS = header0.length >= 8
-    && header0[0] === 'NO'
-    && header0[1].includes('TIPE')
-    && header0[2].includes('REKENING')
-    && header0[3] === 'NAMA'
-    && header0[4].includes('BAKI')
-    && header0[5].includes('PLAF')
-    && header0[6].includes('AMTREL')
-    && header0[7].includes('KOL')
-
-  if (isPrefilteredIDAS) {
-    const rows = []
-    const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
-
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i]
-      if (!Array.isArray(row) || row.length === 0) continue
-
-      const noStr = String(row[0] || '').trim()
-      if (!noStr || !/^\d+$/.test(noStr)) continue
-
-      const tipeProduk = String(row[1] || '').trim()
-      const noRekening = String(row[2] || '').trim()
-      const nama = String(row[3] || '').trim()
-      const bakiDebet = parseNumber(row[4])
-      const plafond = parseNumber(row[5])
-      const amtrel = parseNumber(row[6])
-      const kol = String(row[7] || '').trim()
-
-      const kolNum = parseInt(String(kol).replace(/[^\d]/g, ''), 10)
-      if (!Number.isNaN(kolNum)) {
-        if (kolNum <= 1) kolBreakdown[1] += 1
-        else if (kolNum === 2) kolBreakdown[2] += 1
-        else kolBreakdown['3+'] += 1
-      }
-
-      rows.push({
-        no: Number(noStr),
-        tipeProduk,
-        noRekening,
-        nama,
-        bakiDebet,
-        plafond,
-        amtrel,
-        kol,
-      })
-    }
-
-    return {
-      type: 'prk_spbu',
-      idasDate: null,
-      rows,
-      summary: {
-        totalDebitur: rows.length,
-        totalBakiDebet: rows.reduce((s, r) => s + (r.bakiDebet || 0), 0),
-        totalPlafond: rows.reduce((s, r) => s + (r.plafond || 0), 0),
-        totalAmtrel: rows.reduce((s, r) => s + (r.amtrel || 0), 0),
-        kolBreakdown,
-      },
-      parsedAt: new Date().toISOString(),
-    }
+function emptyMonitoringResult(type) {
+  return {
+    type,
+    idasDate: null,
+    rows: [],
+    summary: {
+      totalDebitur: 0,
+      totalBakiDebet: 0,
+      totalPlafond: 0,
+      totalAmtrel: 0,
+      kolBreakdown: { 1: 0, 2: 0, '3+': 0 },
+      nplCount: 0,
+      cabangList: [],
+    },
+    cabangBreakdown: [],
+    parsedAt: new Date().toISOString(),
   }
+}
 
-  const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
-  const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => norm(c) === 'TIPE PRODUK' || norm(c).includes('TIPE PRODUK')))
-  if (headerRowIndex === -1) {
-    return {
-      type: 'prk_spbu',
-      idasDate: null,
-      rows: [],
-      summary: {
-        totalDebitur: 0,
-        totalBakiDebet: 0,
-        totalPlafond: 0,
-        totalAmtrel: 0,
-        kolBreakdown: { 1: 0, 2: 0, '3+': 0 },
-        nplCount: 0,
-        cabangList: [],
-      },
-      cabangBreakdown: [],
-      parsedAt: new Date().toISOString(),
-    }
-  }
+function emptyManualResult(type) {
+  return { type, rows: [], parsedAt: new Date().toISOString() }
+}
 
-  const headerRow = data[headerRowIndex].map(norm)
-  const colIdx = (candidates) => {
-    for (const cand of candidates) {
-      const idx = headerRow.findIndex((h) => h === cand || h.includes(cand))
-      if (idx !== -1) return idx
-    }
-    return -1
-  }
+function normalizeCell(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ')
+}
 
-  const idxTanggal = colIdx(['TANGGAL'])
-  const idxTipeProduk = colIdx(['TIPE PRODUK'])
-  const idxNama = colIdx(['NAMA'])
-  const idxNoRek = colIdx(['NO. REKENING', 'NO REKENING', 'NO.REKENING', 'NO REK', 'NO. REK'])
-  const idxBakiDebet = colIdx(['BAKI DEBET'])
-  const idxPlafond = colIdx(['PLAFOND'])
-  const idxAmtrel = colIdx(['AMTREL'])
-  const idxKOL = colIdx(['KOL'])
-  const idxPlNpl = colIdx(['PL/NPL', 'PL NPL', 'PLNPL'])
-  const idxCabang = colIdx(['CABANG'])
-  const idxKanwil = colIdx(['KANWIL', 'KANWIL/AREA', 'KANWIL AREA', 'KANWIL / AREA'])
-  const idxTunggakan = colIdx(['TUNGGAKAN', 'TUNGGAKAN (RP)', 'TUNGGAKAN RP'])
-
-  const parseDateISO = (value) => {
-    if (!value) return null
-    if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
-    if (typeof value === 'number') {
-      const d = excelDateToJS(value)
-      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
-    }
-    const d = new Date(String(value))
+function parseDateISO(value) {
+  if (!value) return null
+  if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
+  if (typeof value === 'number') {
+    const d = excelDateToJS(value)
     return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
   }
+  const d = new Date(String(value))
+  return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+}
 
-  const PRODUCT_MATCHERS = [
-    'B8. KUMK PRK',
-    'BZ. KUMK PRK',
-    'LL. SME - KMK PRK',
-    'M8. SME - KMK PRK SPBU',
-    'EY. KUMK KMK PRK SPBU PERTAMINA',
-    'K4. PRK - KUR',
-  ].map((s) => s.toLowerCase())
+function parseBoolFlag(value) {
+  const s = String(value || '').trim().toLowerCase()
+  return ['v', '✓', '✔', 'x', '1', 'ya', 'y', 'yes', 'true', 'ok'].includes(s)
+}
+
+function findBestIdasSheet(workbook) {
+  const names = Array.isArray(workbook?.SheetNames) ? workbook.SheetNames : []
+  const nonPivotNames = names.filter((name) => !String(name || '').toLowerCase().includes('pivot'))
+  const candidates = nonPivotNames.length > 0 ? nonPivotNames : names
+
+  for (const sheetName of candidates) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet) continue
+
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+    const headerRowIndex = data.findIndex((row) =>
+      Array.isArray(row) && row.some((cell) => {
+        const norm = normalizeCell(cell)
+        return norm.includes('TIPE PRODUK') || norm.includes('NO. REKENING') || norm.includes('NO REKENING')
+      })
+    )
+
+    if (headerRowIndex !== -1) return { data, headerRowIndex }
+  }
+
+  return null
+}
+
+function getColumnIndex(headerRow, candidates) {
+  for (const cand of candidates) {
+    const idx = headerRow.findIndex((header) => header === cand || header.includes(cand))
+    if (idx !== -1) return idx
+  }
+  return -1
+}
+
+function buildMonitoringSummary(rows) {
+  const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
+  let nplCount = 0
+  const cabangSet = new Set()
+  const cabangMap = new Map()
+
+  for (const row of rows) {
+    const kolNum = parseInt(String(row.kol || '').replace(/[^\d]/g, ''), 10)
+    if (!Number.isNaN(kolNum)) {
+      if (kolNum <= 1) kolBreakdown[1] += 1
+      else if (kolNum === 2) kolBreakdown[2] += 1
+      else kolBreakdown['3+'] += 1
+    }
+    if (String(row.plNpl || '').toUpperCase().includes('NPL')) nplCount += 1
+    if (row.cabang) cabangSet.add(row.cabang)
+
+    const key = `${row.cabang}__${row.kanwil}`
+    if (!cabangMap.has(key)) {
+      cabangMap.set(key, { cabang: row.cabang, kanwil: row.kanwil, count: 0, totalBakiDebet: 0 })
+    }
+    const item = cabangMap.get(key)
+    item.count += 1
+    item.totalBakiDebet += row.bakiDebet || 0
+  }
+
+  return {
+    summary: {
+      totalDebitur: rows.length,
+      totalBakiDebet: rows.reduce((sum, row) => sum + (row.bakiDebet || 0), 0),
+      totalPlafond: rows.reduce((sum, row) => sum + (row.plafond || 0), 0),
+      totalAmtrel: rows.reduce((sum, row) => sum + (row.amtrel || 0), 0),
+      kolBreakdown,
+      nplCount,
+      cabangList: Array.from(cabangSet).sort(),
+    },
+    cabangBreakdown: Array.from(cabangMap.values()).sort((a, b) => (b.totalBakiDebet || 0) - (a.totalBakiDebet || 0)),
+  }
+}
+
+function parseMonitoringIdasWorkbook(workbook, { type, productMatchers = null }) {
+  const empty = emptyMonitoringResult(type)
+  const match = findBestIdasSheet(workbook)
+  if (!match) return empty
+
+  const { data, headerRowIndex } = match
+  const headerRow = data[headerRowIndex].map(normalizeCell)
+
+  const idxTanggal = getColumnIndex(headerRow, ['TANGGAL'])
+  const idxTipeProduk = getColumnIndex(headerRow, ['TIPE PRODUK'])
+  const idxNama = getColumnIndex(headerRow, ['NAMA'])
+  const idxNoRek = getColumnIndex(headerRow, ['NO. REKENING', 'NO REKENING', 'NO.REKENING', 'NO REK', 'NO. REK', 'REKENING'])
+  const idxBakiDebet = getColumnIndex(headerRow, ['BAKI DEBET'])
+  const idxPlafond = getColumnIndex(headerRow, ['PLAFOND'])
+  const idxAmtrel = getColumnIndex(headerRow, ['AMTREL'])
+  const idxKOL = getColumnIndex(headerRow, ['KOL'])
+  const idxPlNpl = getColumnIndex(headerRow, ['PL/NPL', 'PL NPL', 'PLNPL'])
+  const idxCabang = getColumnIndex(headerRow, ['CABANG'])
+  const idxKanwil = getColumnIndex(headerRow, ['KANWIL', 'KANWIL/AREA', 'KANWIL AREA', 'KANWIL / AREA'])
+  const idxTunggakan = getColumnIndex(headerRow, ['TUNGGAKAN', 'TUNGGAKAN (RP)', 'TUNGGAKAN RP'])
 
   const rows = []
   let idasDate = null
@@ -981,228 +1006,148 @@ export function parseIDASforSPBU(workbook) {
     const row = data[i]
     if (!Array.isArray(row) || row.length === 0) continue
 
-    const tipeProduk = String(row[idxTipeProduk] || '').trim()
-    if (!tipeProduk) continue
+    const tipeProduk = idxTipeProduk !== -1 ? String(row[idxTipeProduk] || '').trim() : ''
+    const noRekening = idxNoRek !== -1 ? String(row[idxNoRek] || '').trim() : ''
+    const nama = idxNama !== -1 ? String(row[idxNama] || '').trim() : ''
+    if (!tipeProduk && !noRekening && !nama) continue
 
-    const tipeLower = tipeProduk.toLowerCase()
-    const isMatch = PRODUCT_MATCHERS.some((m) => tipeLower.includes(m))
-    if (!isMatch) continue
+    if (productMatchers?.length) {
+      const tipeLower = tipeProduk.toLowerCase()
+      if (!productMatchers.some((matcher) => tipeLower.includes(matcher))) continue
+    }
 
     const tanggalISO = idxTanggal !== -1 ? parseDateISO(row[idxTanggal]) : null
     if (!idasDate && tanggalISO) idasDate = tanggalISO
 
-    const bakiDebet = idxBakiDebet !== -1 ? parseNumber(row[idxBakiDebet]) : 0
-    const plafond = idxPlafond !== -1 ? parseNumber(row[idxPlafond]) : 0
-    const amtrel = idxAmtrel !== -1 ? parseNumber(row[idxAmtrel]) : 0
-    const tunggakan = idxTunggakan !== -1 ? parseNumber(row[idxTunggakan]) : 0
-
     rows.push({
       tanggal: tanggalISO,
       tipeProduk,
-      nama: String(row[idxNama] || '').trim(),
-      noRekening: String(row[idxNoRek] || '').trim(),
-      bakiDebet,
-      plafond,
-      amtrel,
-      kol: String(row[idxKOL] || '').trim(),
-      plNpl: String(row[idxPlNpl] || '').trim(),
-      cabang: String(row[idxCabang] || '').trim(),
-      kanwil: String(row[idxKanwil] || '').trim(),
-      tunggakan,
+      nama,
+      noRekening,
+      bakiDebet: idxBakiDebet !== -1 ? parseNumber(row[idxBakiDebet]) : 0,
+      plafond: idxPlafond !== -1 ? parseNumber(row[idxPlafond]) : 0,
+      amtrel: idxAmtrel !== -1 ? parseNumber(row[idxAmtrel]) : 0,
+      kol: idxKOL !== -1 ? String(row[idxKOL] || '').trim() : '',
+      plNpl: idxPlNpl !== -1 ? String(row[idxPlNpl] || '').trim() : '',
+      cabang: idxCabang !== -1 ? String(row[idxCabang] || '').trim() : '',
+      kanwil: idxKanwil !== -1 ? String(row[idxKanwil] || '').trim() : '',
+      tunggakan: idxTunggakan !== -1 ? parseNumber(row[idxTunggakan]) : 0,
     })
   }
 
-  const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
-  let nplCount = 0
-  const cabangSet = new Set()
-  const cabangMap = new Map()
-
-  for (const r of rows) {
-    const kolNum = parseInt(String(r.kol || '').replace(/[^\d]/g, ''), 10)
-    if (!Number.isNaN(kolNum)) {
-      if (kolNum <= 1) kolBreakdown[1] += 1
-      else if (kolNum === 2) kolBreakdown[2] += 1
-      else kolBreakdown['3+'] += 1
-    }
-    if (String(r.plNpl || '').toUpperCase().includes('NPL')) nplCount += 1
-
-    if (r.cabang) cabangSet.add(r.cabang)
-    const key = `${r.cabang}__${r.kanwil}`
-    if (!cabangMap.has(key)) {
-      cabangMap.set(key, { cabang: r.cabang, kanwil: r.kanwil, count: 0, totalBakiDebet: 0 })
-    }
-    const item = cabangMap.get(key)
-    item.count += 1
-    item.totalBakiDebet += r.bakiDebet || 0
-  }
-
-  const cabangBreakdown = Array.from(cabangMap.values())
-    .sort((a, b) => (b.totalBakiDebet || 0) - (a.totalBakiDebet || 0))
-
-  const summary = {
-    totalDebitur: rows.length,
-    totalBakiDebet: rows.reduce((s, r) => s + (r.bakiDebet || 0), 0),
-    totalPlafond: rows.reduce((s, r) => s + (r.plafond || 0), 0),
-    totalAmtrel: rows.reduce((s, r) => s + (r.amtrel || 0), 0),
-    kolBreakdown,
-    nplCount,
-    cabangList: Array.from(cabangSet).sort(),
-  }
-
-  return {
-    type: 'prk_spbu',
-    idasDate,
-    rows,
-    summary,
-    cabangBreakdown,
-    parsedAt: new Date().toISOString(),
-  }
+  const { summary, cabangBreakdown } = buildMonitoringSummary(rows)
+  return { type, idasDate, rows, summary, cabangBreakdown, parsedAt: new Date().toISOString() }
 }
 
-export function parseMonitoringSPBU(workbook) {
+export function parseSPBUIdas(workbook) {
+  return parseMonitoringIdasWorkbook(workbook, { type: 'prk_spbu', productMatchers: SPBU_PRODUCT_MATCHERS })
+}
+
+export function parseBPJSIdas(workbook) {
+  return parseMonitoringIdasWorkbook(workbook, { type: 'bpjs' })
+}
+
+export function parseSPBUManual(workbook) {
   const sheetName = workbook.SheetNames.find((n) => String(n || '').trim().toLowerCase() === 'monitoring spbu')
     || workbook.SheetNames.find((n) => String(n || '').toLowerCase().includes('monitoring spbu'))
 
-  if (!sheetName) {
-    return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
-  }
+  if (!sheetName) return emptyManualResult('prk_spbu_manual')
 
-  const sheet = workbook.Sheets[sheetName]
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
-
-  // Corrected: fixed 3-row header layout (only cols 0–16 are needed), data starts at row 4.
-  // Row 1: main header (col 2 "No Debitur", col 3 "Nama")
-  // Row 3: sub header (CMS=14, EDC=15, QRIS=16)
-  const mainHdr = Array.isArray(data[1]) ? data[1] : null
-  const isFixedMaster = !!mainHdr
-    && String(mainHdr[2] || '').toLowerCase().includes('debitur')
-    && String(mainHdr[3] || '').toLowerCase().includes('nama')
-
-  if (isFixedMaster) {
-    const parseDateISO_fixed = (value) => {
-      if (!value) return null
-      if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
-      if (typeof value === 'number') {
-        const d = excelDateToJS(value)
-        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
-      }
-      const d = new Date(String(value))
-      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
-    }
-
-    const parseBoolFlag_fixed = (value) => {
-      const s = String(value || '').trim().toLowerCase()
-      return s === 'v' || s === '✓' || s === 'âœ“' || s === 'x' || s === '1' || s === 'ya' || s === 'y' || s === 'yes' || s === 'true'
-    }
-
-    const rows = []
-    for (let i = 4; i < data.length; i++) {
-      const row = data[i]
-      if (!Array.isArray(row) || row.length === 0) continue
-
-      const noStr = String(row[0] || '').trim()
-      if (!noStr || !/^\d+$/.test(noStr)) continue
-
-      rows.push({
-        no: Number(noStr),
-        cabang: String(row[1] || '').trim(),
-        noDebitur: String(row[2] || '').trim(),
-        nama: String(row[3] || '').trim(),
-        produk: String(row[4] || '').trim(),
-        telp: String(row[5] || '').trim(),
-        tglAkad: parseDateISO_fixed(row[8]),
-        tglJatuhTempo: parseDateISO_fixed(row[9]),
-        agunan: String(row[10] || '').trim(),
-        plafon: parseNumber(row[12]),
-        hasCMS: parseBoolFlag_fixed(row[14]),
-        hasEDC: parseBoolFlag_fixed(row[15]),
-        hasQRIS: parseBoolFlag_fixed(row[16]),
-      })
-    }
-
-    return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
-  }
-
-  const norm = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, ' ')
-  const headerRowIndex = data.findIndex((row) => Array.isArray(row) && row.some((c) => ['NAMA', 'CABANG'].includes(norm(c))))
-  if (headerRowIndex === -1) {
-    return { type: 'prk_spbu_manual', rows: [], parsedAt: new Date().toISOString() }
-  }
-
-  const headerRow = data[headerRowIndex].map(norm)
-  const colIdx = (candidates) => {
-    for (const cand of candidates) {
-      const idx = headerRow.findIndex((h) => h === cand || h.includes(cand))
-      if (idx !== -1) return idx
-    }
-    return -1
-  }
-
-  const idxNoDebitur = colIdx(['NO DEBITUR', 'NO. DEBITUR', 'NO NASABAH', 'NO. NASABAH'])
-  const idxNama = colIdx(['NAMA'])
-  const idxCabang = colIdx(['CABANG'])
-  const idxPlafon = colIdx(['PLAFON', 'PLAFOND'])
-  const idxTglAkad = colIdx(['TGL AKAD', 'TANGGAL AKAD'])
-  const idxTglJt = colIdx(['TGL JATUH TEMPO', 'TGL JT TEMPO', 'JATUH TEMPO'])
-  const idxAgunan = colIdx(['AGUNAN'])
-  const idxCMS = colIdx(['CMS'])
-  const idxEDC = colIdx(['EDC'])
-  const idxQRIS = colIdx(['QRIS'])
-
-  const parseDateISO = (value) => {
-    if (!value) return null
-    if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().split('T')[0]
-    if (typeof value === 'number') {
-      const d = excelDateToJS(value)
-      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
-    }
-    const d = new Date(String(value))
-    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
-  }
-
-  const parseBoolFlag = (value) => {
-    const s = String(value || '').trim().toLowerCase()
-    return s === 'v' || s === '✓' || s === 'x' || s === '1' || s === 'ya' || s === 'y' || s === 'yes' || s === 'true'
-  }
-
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
   const rows = []
 
-  for (let i = headerRowIndex + 1; i < data.length; i++) {
+  for (let i = 0; i < data.length; i++) {
     const row = data[i]
     if (!Array.isArray(row) || row.length === 0) continue
 
-    const nama = String(row[idxNama] || '').trim()
-    const cabang = String(row[idxCabang] || '').trim()
-    const noDebitur = idxNoDebitur !== -1 ? String(row[idxNoDebitur] || '').trim() : ''
-    const plafon = idxPlafon !== -1 ? parseNumber(row[idxPlafon]) : 0
-    const tglAkad = idxTglAkad !== -1 ? parseDateISO(row[idxTglAkad]) : null
-    const tglJatuhTempo = idxTglJt !== -1 ? parseDateISO(row[idxTglJt]) : null
-    const agunan = idxAgunan !== -1 ? String(row[idxAgunan] || '').trim() : ''
-    const hasCMS = idxCMS !== -1 ? parseBoolFlag(row[idxCMS]) : false
-    const hasEDC = idxEDC !== -1 ? parseBoolFlag(row[idxEDC]) : false
-    const hasQRIS = idxQRIS !== -1 ? parseBoolFlag(row[idxQRIS]) : false
-
-    if (!nama && !noDebitur) continue
+    const noStr = String(row[0] || '').trim()
+    if (!noStr || !/^\d+$/.test(noStr)) continue
 
     rows.push({
-      noDebitur,
-      nama,
-      cabang,
-      plafon,
-      tglAkad,
-      tglJatuhTempo,
-      agunan,
-      hasCMS,
-      hasEDC,
-      hasQRIS,
+      no: Number(noStr),
+      cabang: String(row[1] || '').trim(),
+      noDebitur: String(row[2] || '').trim(),
+      nama: String(row[3] || '').trim(),
+      produk: String(row[4] || '').trim(),
+      telp: String(row[5] || '').trim(),
+      tglAkad: parseDateISO(row[8]),
+      tglJatuhTempo: parseDateISO(row[9]),
+      agunan: String(row[10] || '').trim(),
+      plafon: parseNumber(row[12]),
+      hasCMS: parseBoolFlag(row[14]),
+      hasEDC: parseBoolFlag(row[15]),
+      hasQRIS: parseBoolFlag(row[16]),
     })
   }
 
-  return {
-    type: 'prk_spbu_manual',
-    rows,
-    parsedAt: new Date().toISOString(),
+  return { type: 'prk_spbu_manual', rows, parsedAt: new Date().toISOString() }
+}
+
+export function parseBPJSManual(workbook) {
+  const sheetName = workbook.SheetNames.find((n) => String(n || '').trim().toLowerCase() === 'monitoring bpjs')
+    || workbook.SheetNames.find((n) => String(n || '').toLowerCase().includes('monitoring bpjs'))
+
+  if (!sheetName) return emptyManualResult('bpjs_manual')
+
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const rows = []
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i]
+    if (!Array.isArray(row) || row.length === 0) continue
+
+    const noStr = String(row[0] || '').trim()
+    if (!noStr || !/^\d+$/.test(noStr)) continue
+
+    rows.push({
+      no: Number(noStr),
+      cabang: String(row[1] || '').trim(),
+      noDebitur: String(row[2] || '').trim(),
+      nama: String(row[3] || '').trim(),
+      produk: String(row[4] || '').trim(),
+      telp: String(row[5] || '').trim(),
+      tglAkad: parseDateISO(row[8]),
+      tglJatuhTempo: parseDateISO(row[9]),
+      plafon: parseNumber(row[11]),
+    })
   }
+
+  return { type: 'bpjs_manual', rows, parsedAt: new Date().toISOString() }
+}
+
+export function parseIndomaretIdas(workbook) {
+  return parseMonitoringIdasWorkbook(workbook, { type: 'indomaret' })
+}
+
+export function parseIndomaretManual(workbook) {
+  const sheetName = workbook.SheetNames.find((n) => String(n || '').trim().toLowerCase() === 'monitoring indomaret')
+    || workbook.SheetNames.find((n) => String(n || '').toLowerCase().includes('monitoring indomaret'))
+    || workbook.SheetNames.find((n) => String(n || '').toLowerCase().includes('indomaret'))
+
+  if (!sheetName) return emptyManualResult('indomaret_manual')
+
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const rows = []
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i]
+    if (!Array.isArray(row) || row.length === 0) continue
+    const noStr = String(row[0] || '').trim()
+    if (!noStr || !/^\d+$/.test(noStr)) continue
+
+    rows.push({
+      no: Number(noStr),
+      cabang: String(row[1] || '').trim(),
+      noDebitur: String(row[2] || '').trim(),
+      nama: String(row[3] || '').trim(),
+      produk: String(row[4] || '').trim(),
+      tglAkad: parseDateISO(row[5]),
+      tglJatuhTempo: parseDateISO(row[6]),
+      plafon: parseNumber(row[8]),
+    })
+  }
+
+  return { type: 'indomaret_manual', rows, parsedAt: new Date().toISOString() }
 }
 
 // ============================================
