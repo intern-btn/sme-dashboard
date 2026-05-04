@@ -21,7 +21,7 @@ export function Th({ label, onSort = null, right = false }) {
   )
 }
 
-export function setSortBy(setSort, sort, key) {
+export function setSortBy(setSort, key) {
   setSort((prev) => {
     if (prev.key === key) return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
     return { key, dir: 'desc' }
