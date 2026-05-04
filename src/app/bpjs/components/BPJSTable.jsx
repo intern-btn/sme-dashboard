@@ -147,7 +147,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
                 : kolNum && kolNum >= 2 ? 'bg-yellow-50'
                 : ''
               return (
-                <tr key={r?.noDebitur ?? idx} className={`${rowClass} hover:bg-gray-50`}>
+                <tr key={r?.noDebitur || idx} className={`${rowClass} hover:bg-gray-50`}>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.cabang || '-'}</td>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap font-mono">{r?.noDebitur || '-'}</td>
                   <td className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap">{r?.nama || '-'}</td>
