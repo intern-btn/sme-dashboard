@@ -18,3 +18,6 @@ node_modules
 /src/generated/prisma
 
 .env*.local
+
+# debug scripts
+inspect_bpjs*.js
