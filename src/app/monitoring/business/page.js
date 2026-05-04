@@ -10,6 +10,7 @@ import BPJSDashboard from '../../bpjs/components/BPJSDashboard'
 import BPJSTable from '../../bpjs/components/BPJSTable'
 import IndomaretDashboard from '../../indomaret/components/IndomaretDashboard'
 import IndomaretTable from '../../indomaret/components/IndomaretTable'
+import { normKey, normName } from '../../../lib/business-utils'
 
 const VALID_TABS = ['spbu', 'bpjs', 'indomaret']
 
@@ -24,8 +25,6 @@ const monitoringSubNav = [
   { href: '/monitoring/business', label: 'Business Monitoring' },
 ]
 
-function normName(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ') }
-function normKey(s) { return String(s || '').trim() }
 
 function buildMergedRows(idasData, masterData) {
   const idasRows = Array.isArray(idasData?.rows) ? idasData.rows : []
