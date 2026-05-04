@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import ExportButton from '../../components/ExportButton'
 import { exportTableToPDF } from '../../lib/pdfExport'
-import { formatRp, formatNum, formatDateDisplay, toKolNum, CHECK, WARN } from '../../../lib/business-utils'
+import { formatNum, formatDateDisplay, toKolNum, CHECK, WARN } from '../../../lib/business-utils'
 import { Th, setSortBy } from '../../components/SortableTableHeader'
 
 export default function SPBUTable({ rows, cabangList, filters, onFiltersChange, idasDate }) {
