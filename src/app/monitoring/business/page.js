@@ -10,7 +10,7 @@ import BPJSDashboard from '../../bpjs/components/BPJSDashboard'
 import BPJSTable from '../../bpjs/components/BPJSTable'
 import IndomaretDashboard from '../../indomaret/components/IndomaretDashboard'
 import IndomaretTable from '../../indomaret/components/IndomaretTable'
-import { normKey, normName } from '../../../lib/business-utils'
+import { normKey, normName, toKolNum } from '../../../lib/business-utils'
 
 const VALID_TABS = ['spbu', 'bpjs', 'indomaret']
 
@@ -59,7 +59,7 @@ function applyFilters(mergedRows, filters) {
     if (filters.cabang && (r?.cabang || '') !== filters.cabang) return false
     if (filters.status === 'found' && !r?.idasFound) return false
     if (filters.status === 'delayed' && r?.idasFound) return false
-    const kolNum = parseInt(String(r?.kol || '').replace(/[^\d]/g, ''), 10)
+    const kolNum = toKolNum(r?.kol)
     if (filters.kol === 'kol1' && kolNum !== 1) return false
     if (filters.kol === 'kol2plus' && (!kolNum || kolNum < 2)) return false
     if (filters.kol === 'kol5plus' && (!kolNum || kolNum < 5)) return false

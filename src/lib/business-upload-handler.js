@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { getStorage } from './storage/index.js'
-
-function normKey(s) { return String(s || '').trim() }
-function normName(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ') }
+import { normKey, normName, toKolNum } from './business-utils.js'
 
 function computeMergeStats(parsedIdas, masterRows) {
   const idasRows = Array.isArray(parsedIdas?.rows) ? parsedIdas.rows : []
@@ -33,8 +31,8 @@ function buildTrendPoint(parsedIdas, idasDate) {
   const summary = parsedIdas?.summary || {}
   const rows = Array.isArray(parsedIdas?.rows) ? parsedIdas.rows : []
   const kol2PlusCount = rows.reduce((sum, r) => {
-    const kolNum = parseInt(String(r?.kol || '').replace(/[^\d]/g, ''), 10)
-    return sum + (!Number.isNaN(kolNum) && kolNum >= 2 ? 1 : 0)
+    const kolNum = toKolNum(r?.kol)
+    return sum + (kolNum !== null && kolNum >= 2 ? 1 : 0)
   }, 0)
   return {
     date,
