@@ -34,7 +34,7 @@ export async function POST(request) {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'application/vnd.ms-excel'
           ],
-          maximumSizeInBytes: 15 * 1024 * 1024, // 15MB limit
+          maximumSizeInBytes: 100 * 1024 * 1024, // 100MB max
           addRandomSuffix: true, // Add random suffix to avoid conflicts
           tokenPayload: JSON.stringify({
             uploadedAt: new Date().toISOString()

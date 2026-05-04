@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function IndomaretRedirect() {
-  redirect('/monitoring/indomaret')
+  redirect('/monitoring/business?tab=indomaret')
 }

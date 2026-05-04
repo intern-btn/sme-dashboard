@@ -63,7 +63,7 @@ export default function SPBUDashboard({ trend, mergedRows }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card title="Total Debitur" value={totalDebitur} />
         <Card title="Ditemukan di IDAS" value={foundCount} />
-        <Card title="Tidak di IDAS (Delayed)" value={delayedCount} warn />
+        <Card title="Closed" value={delayedCount} warn />
         <Card title="Total Pencairan (AMTREL)" value={formatRp(totalAmtrel)} accent />
         <Card title="Total Baki Debet (IDAS)" value={formatRp(totalBakiDebetFound)} accent />
       </div>

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function BpjsRedirect() {
-  redirect('/monitoring/bpjs')
+  redirect('/monitoring/business?tab=bpjs')
 }

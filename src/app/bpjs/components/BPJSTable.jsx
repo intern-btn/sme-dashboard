@@ -58,7 +58,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
     kol: r?.idasFound ? (r?.kol ?? '') : '',
     amtrel: r?.idasFound ? (r?.amtrel ?? null) : null,
     pokokTerbayar: r?.idasFound ? ((r?.amtrel ?? 0) - (r?.bakiDebet ?? 0)) : null,
-    status: r?.idasFound ? 'IN_IDAS' : 'DELAYED',
+    status: r?.idasFound ? 'IN_IDAS' : 'CLOSED',
   }))
 
   const handleExportExcel = () => {
@@ -141,7 +141,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
             >
               <option value="all">All</option>
               <option value="found">In IDAS</option>
-              <option value="delayed">Not found (Delayed)</option>
+              <option value="delayed">Closed</option>
             </select>
           </div>
 
@@ -224,7 +224,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
-                        {WARN} Delayed
+                        {WARN} Closed
                       </span>
                     )}
                   </td>
@@ -244,7 +244,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
 
       <div className="p-3 border-t border-gray-200 text-xs text-gray-500">
         Total rows: {sortedRows.length}. Highlight:{' '}
-        <span className="text-orange-700">Delayed</span> /{' '}
+        <span className="text-orange-700">Closed</span> /{' '}
         <span className="text-yellow-700">KOL 2-4</span> /{' '}
         <span className="text-red-700">KOL 5+</span>
       </div>

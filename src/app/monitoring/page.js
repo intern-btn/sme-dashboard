@@ -10,8 +10,7 @@ import { useState, useEffect } from 'react'
 
 const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
-  { href: '/monitoring/spbu', label: 'PRK SPBU' },
-  { href: '/monitoring/bpjs', label: 'BPJS' },
+  { href: '/monitoring/business', label: 'Business Monitoring' },
 ]
 
 const KANWIL_TABS = [
