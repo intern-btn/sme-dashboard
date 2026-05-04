@@ -4,28 +4,8 @@ import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import ExportButton from '../../components/ExportButton'
 import { exportTableToPDF } from '../../lib/pdfExport'
-
-const formatRp = (n) =>
-  `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)}`
-const formatNum = (n) =>
-  new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
-
-function toKolNum(kol) {
-  const kolNum = parseInt(String(kol || '').replace(/[^\d]/g, ''), 10)
-  return Number.isNaN(kolNum) ? null : kolNum
-}
-
-function formatDateDisplay(value) {
-  const s = String(value || '').trim()
-  if (!s) return ''
-  const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return s
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-const CHECK = '✓'
-const WARN = '⚠'
-const SORT_ICON = '↕'
+import { formatRp, formatNum, formatDateDisplay, toKolNum, CHECK, WARN } from '../../../lib/business-utils'
+import { Th, setSortBy } from '../../components/SortableTableHeader'
 
 export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, idasDate }) {
   const [sort, setSort] = useState({ key: 'bakiDebet', dir: 'desc' })
@@ -75,10 +55,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
     ]
     const data = exportRows.map((r) => [
       r.cabang, r.noDebitur, r.nama, r.produk, r.tglAkad, r.tglJatuhTempo,
-      formatNum(r.plafon),
-      formatNum(r.bakiDebet),
-      r.kol,
-      formatNum(r.amtrel),
+      formatNum(r.plafon), formatNum(r.bakiDebet), r.kol, formatNum(r.amtrel),
       r.pokokTerbayar !== null ? formatNum(r.pokokTerbayar) : '-',
       r.status,
     ])
@@ -89,12 +66,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
       data,
       fileName: `BPJS_${idasDate || 'data'}.pdf`,
       orientation: 'landscape',
-      columnStyles: {
-        2: { cellWidth: 48 },
-        0: { cellWidth: 22 },
-        1: { cellWidth: 28 },
-        3: { cellWidth: 36 },
-      },
+      columnStyles: { 2: { cellWidth: 48 }, 0: { cellWidth: 22 }, 1: { cellWidth: 28 }, 3: { cellWidth: 36 } },
     })
   }
 
@@ -120,54 +92,31 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cabang</label>
-            <select
-              value={filters.cabang}
-              onChange={(e) => setFilter('cabang', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={filters.cabang} onChange={(e) => setFilter('cabang', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="">Semua</option>
-              {cabangList.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+              {cabangList.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilter('status', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="all">All</option>
               <option value="found">In IDAS</option>
               <option value="delayed">Closed</option>
             </select>
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">KOL</label>
-            <select
-              value={filters.kol}
-              onChange={(e) => setFilter('kol', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={filters.kol} onChange={(e) => setFilter('kol', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="all">All</option>
               <option value="kol1">KOL 1</option>
               <option value="kol2plus">KOL 2+</option>
               <option value="kol5plus">KOL 5+</option>
             </select>
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cari Nama</label>
-            <input
-              type="text"
-              value={filters.q}
-              onChange={(e) => setFilter('q', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="Nama debitur..."
-            />
+            <input type="text" value={filters.q} onChange={(e) => setFilter('q', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Nama debitur..." />
           </div>
         </div>
       </div>
@@ -176,30 +125,27 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
         <table className="min-w-[1100px] w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <Th label="Cabang" onSort={() => setSortBy(setSort, sort, 'cabang')} />
-              <Th label="No Debitur" onSort={() => setSortBy(setSort, sort, 'noDebitur')} />
-              <Th label="Nama" onSort={() => setSortBy(setSort, sort, 'nama')} />
-              <Th label="Produk" onSort={() => setSortBy(setSort, sort, 'produk')} />
-              <Th label="Tgl Akad" onSort={() => setSortBy(setSort, sort, 'tglAkad')} />
-              <Th label="Tgl JT" onSort={() => setSortBy(setSort, sort, 'tglJatuhTempo')} />
-              <Th label="Plafon" onSort={() => setSortBy(setSort, sort, 'plafon')} right />
-              <Th label="Baki Debet" onSort={() => setSortBy(setSort, sort, 'bakiDebet')} right />
-              <Th label="KOL" onSort={() => setSortBy(setSort, sort, 'kol')} />
-              <Th label="Amtrel" onSort={() => setSortBy(setSort, sort, 'amtrel')} right />
+              <Th label="Cabang" onSort={() => setSortBy(setSort, 'cabang')} />
+              <Th label="No Debitur" onSort={() => setSortBy(setSort, 'noDebitur')} />
+              <Th label="Nama" onSort={() => setSortBy(setSort, 'nama')} />
+              <Th label="Produk" onSort={() => setSortBy(setSort, 'produk')} />
+              <Th label="Tgl Akad" onSort={() => setSortBy(setSort, 'tglAkad')} />
+              <Th label="Tgl JT" onSort={() => setSortBy(setSort, 'tglJatuhTempo')} />
+              <Th label="Plafon" onSort={() => setSortBy(setSort, 'plafon')} right />
+              <Th label="Baki Debet" onSort={() => setSortBy(setSort, 'bakiDebet')} right />
+              <Th label="KOL" onSort={() => setSortBy(setSort, 'kol')} />
+              <Th label="Amtrel" onSort={() => setSortBy(setSort, 'amtrel')} right />
               <Th label="Pokok Terbayar" right />
-              <Th label="Status" onSort={() => setSortBy(setSort, sort, 'idasFound')} />
+              <Th label="Status" onSort={() => setSortBy(setSort, 'idasFound')} />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {sortedRows.map((r, idx) => {
               const kolNum = toKolNum(r?.kol)
-              const rowClass = !r?.idasFound
-                ? 'bg-orange-50'
-                : kolNum && kolNum >= 5
-                  ? 'bg-red-50'
-                  : kolNum && kolNum >= 2
-                    ? 'bg-yellow-50'
-                    : ''
+              const rowClass = !r?.idasFound ? 'bg-orange-50'
+                : kolNum && kolNum >= 5 ? 'bg-red-50'
+                : kolNum && kolNum >= 2 ? 'bg-yellow-50'
+                : ''
               return (
                 <tr key={idx} className={`${rowClass} hover:bg-gray-50`}>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.cabang || '-'}</td>
@@ -218,25 +164,16 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
                     {r?.idasFound ? formatNum((r?.amtrel ?? 0) - (r?.bakiDebet ?? 0)) : '-'}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {r?.idasFound ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
-                        {CHECK} In IDAS
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
-                        {WARN} Closed
-                      </span>
-                    )}
+                    {r?.idasFound
+                      ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">{CHECK} In IDAS</span>
+                      : <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">{WARN} Closed</span>
+                    }
                   </td>
                 </tr>
               )
             })}
             {sortedRows.length === 0 && (
-              <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
-                  Tidak ada data.
-                </td>
-              </tr>
+              <tr><td colSpan={12} className="px-4 py-10 text-center text-gray-400">Tidak ada data.</td></tr>
             )}
           </tbody>
         </table>
@@ -250,26 +187,4 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
       </div>
     </div>
   )
-}
-
-function Th({ label, onSort = null, right = false }) {
-  return (
-    <th className={`px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap ${right ? 'text-right' : 'text-left'}`}>
-      <div className={`flex items-center gap-1 ${right ? 'justify-end' : ''}`}>
-        <span>{label}</span>
-        {onSort && (
-          <button type="button" onClick={onSort} className="text-gray-400 hover:text-gray-600">
-            {SORT_ICON}
-          </button>
-        )}
-      </div>
-    </th>
-  )
-}
-
-function setSortBy(setSort, sort, key) {
-  setSort((prev) => {
-    if (prev.key === key) return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-    return { key, dir: 'desc' }
-  })
 }
