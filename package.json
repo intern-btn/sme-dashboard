@@ -30,10 +30,13 @@
     "jspdf-autotable": "^5.0.7",
     "next": "^16.2.1",
     "next-auth": "^4.24.13",
+    "otplib": "^13.4.0",
     "prisma": "^7.5.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^2.15.4",
+    "turso": "^0.6.0-pre.21",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

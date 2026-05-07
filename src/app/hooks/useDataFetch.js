@@ -74,5 +74,5 @@ export function useDataFetch(dataType, refreshInterval = null) {
     fetchData()
   }, [fetchData])
 
-  return { data, metadata, loading, error, noData, refresh }
+  return { data, metadata, loading, error, noData, refresh, refetch: refresh }
 }

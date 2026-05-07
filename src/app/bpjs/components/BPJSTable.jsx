@@ -3,12 +3,23 @@
 import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import ExportButton from '../../components/ExportButton'
+import TotpUnlockModal from '../../../components/TotpUnlockModal'
 import { exportTableToPDF } from '../../lib/pdfExport'
 import { formatNum, formatDateDisplay, toKolNum, CHECK, WARN } from '../../../lib/business-utils'
 import { Th, setSortBy } from '../../components/SortableTableHeader'
 
-export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, idasDate }) {
+function LockIcon({ open = false }) {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d={open ? 'M7 10V8a5 5 0 0 1 9.5-2.2' : 'M7 10V8a5 5 0 0 1 10 0v2'} />
+      <rect x="5" y="10" width="14" height="10" rx="2" />
+    </svg>
+  )
+}
+
+export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, idasDate, dataType = 'bpjs', isLocked = false, onRefetch }) {
   const [sort, setSort] = useState({ key: 'bakiDebet', dir: 'desc' })
+  const [modalOpen, setModalOpen] = useState(false)
 
   const sortedRows = useMemo(() => {
     const arr = Array.isArray(rows) ? [...rows] : []
@@ -71,12 +82,36 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
   }
 
   const setFilter = (key, value) => onFiltersChange((prev) => ({ ...prev, [key]: value }))
+  const openUnlockModal = () => {
+    if (isLocked) setModalOpen(true)
+  }
+  const revokeUnlock = async () => {
+    if (isLocked) return
+    await fetch('/api/auth/revoke-unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataType }),
+    })
+    onRefetch?.()
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="p-4 border-b border-gray-200 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="font-semibold text-gray-900">Detail Debitur</div>
+          <div className="font-semibold text-gray-900 flex items-center gap-2">
+            Detail Debitur
+            <button
+              type="button"
+              onClick={revokeUnlock}
+              disabled={isLocked}
+              className={`inline-flex items-center justify-center rounded-md border p-1 ${isLocked ? 'border-gray-200 text-gray-400 cursor-default' : 'border-blue-200 text-blue-700 hover:bg-blue-50'}`}
+              title={isLocked ? 'Data locked' : 'Lock data again'}
+              aria-label={isLocked ? 'Data locked' : 'Lock data again'}
+            >
+              <LockIcon open={!isLocked} />
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <ExportButton onClick={handleExportPDF} label="Export PDF" />
             <button
@@ -116,7 +151,7 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cari Nama</label>
-            <input type="text" value={filters.q} onChange={(e) => setFilter('q', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Nama debitur..." />
+            <input type="text" value={isLocked ? '' : filters.q} onChange={(e) => setFilter('q', e.target.value)} disabled={isLocked} title={isLocked ? 'Unlock to search by name' : undefined} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400" placeholder={isLocked ? 'Unlock to search by name' : 'Nama debitur...'} />
           </div>
         </div>
       </div>
@@ -147,10 +182,14 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
                 : kolNum && kolNum >= 2 ? 'bg-yellow-50'
                 : ''
               return (
-                <tr key={r?.noDebitur || idx} className={`${rowClass} hover:bg-gray-50`}>
+                <tr key={r?._noDebiturHash || r?.noDebitur || idx} className={`${rowClass} hover:bg-gray-50`}>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r?.cabang || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap font-mono">{r?.noDebitur || '-'}</td>
-                  <td className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap">{r?.nama || '-'}</td>
+                  <td onClick={openUnlockModal} className={`px-3 py-2 text-gray-700 whitespace-nowrap font-mono ${isLocked ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
+                    <span className="inline-flex items-center gap-1">{r?.noDebitur || '-'} {isLocked && <LockIcon />}</span>
+                  </td>
+                  <td onClick={openUnlockModal} className={`px-3 py-2 font-medium text-gray-900 whitespace-nowrap ${isLocked ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
+                    <span className="inline-flex items-center gap-1">{r?.nama || '-'} {isLocked && <LockIcon />}</span>
+                  </td>
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">{r?.produk || '-'}</td>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateDisplay(r?.tglAkad) || '-'}</td>
                   <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{formatDateDisplay(r?.tglJatuhTempo) || '-'}</td>
@@ -185,6 +224,15 @@ export default function BPJSTable({ rows, cabangList, filters, onFiltersChange, 
         <span className="text-yellow-700">KOL 2-4</span> /{' '}
         <span className="text-red-700">KOL 5+</span>
       </div>
+      <TotpUnlockModal
+        dataType={dataType}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => {
+          setModalOpen(false)
+          onRefetch?.()
+        }}
+      />
     </div>
   )
 }

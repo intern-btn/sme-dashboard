@@ -32,14 +32,14 @@ function buildMergedRows(idasData, masterData) {
   const idasByRek = new Map()
   const idasByNama = new Map()
   for (const r of idasRows) {
-    const rek = normKey(r?.noRekening)
+    const rek = r?._noRekeningHash || normKey(r?.noRekening)
     if (rek) idasByRek.set(rek, r)
-    const nm = normName(r?.nama)
+    const nm = r?._namaHash || normName(r?.nama)
     if (nm && !idasByNama.has(nm)) idasByNama.set(nm, r)
   }
   if (masterRows.length === 0) return []
   return masterRows.map((m) => {
-    const idas = idasByRek.get(normKey(m?.noDebitur)) || idasByNama.get(normName(m?.nama)) || null
+    const idas = idasByRek.get(m?._noDebiturHash || normKey(m?.noDebitur)) || idasByNama.get(m?._namaHash || normName(m?.nama)) || null
     return {
       ...m,
       idasFound: !!idas,
@@ -53,8 +53,8 @@ function buildMergedRows(idasData, masterData) {
   })
 }
 
-function applyFilters(mergedRows, filters) {
-  const q = normName(filters.q)
+function applyFilters(mergedRows, filters, isLocked = false) {
+  const q = isLocked ? '' : normName(filters.q)
   return mergedRows.filter((r) => {
     if (filters.cabang && (r?.cabang || '') !== filters.cabang) return false
     if (filters.status === 'found' && !r?.idasFound) return false
@@ -123,15 +123,32 @@ export default function BusinessMonitoringPage() {
   const indomaretManual = useDataFetch('indomaret_manual')
   const indomaretTrend = useDataFetch('indomaret_trend')
 
+  const spbuLocked = spbuManual.data?.masked === true
+  const bpjsLocked = bpjsManual.data?.masked === true
+  const indomaretLocked = indomaretManual.data?.masked === true
+
+  const refetchSpbu = () => {
+    spbu.refetch()
+    spbuManual.refetch()
+  }
+  const refetchBpjs = () => {
+    bpjs.refetch()
+    bpjsManual.refetch()
+  }
+  const refetchIndomaret = () => {
+    indomaret.refetch()
+    indomaretManual.refetch()
+  }
+
   // Merged rows per tab
   const spbuMerged = useMemo(() => buildMergedRows(spbu.data, spbuManual.data), [spbu.data, spbuManual.data])
   const bpjsMerged = useMemo(() => buildMergedRows(bpjs.data, bpjsManual.data), [bpjs.data, bpjsManual.data])
   const indomaretMerged = useMemo(() => buildMergedRows(indomaret.data, indomaretManual.data), [indomaret.data, indomaretManual.data])
 
   // Filtered rows per tab
-  const spbuFiltered = useMemo(() => applyFilters(spbuMerged, spbuFilters), [spbuMerged, spbuFilters])
-  const bpjsFiltered = useMemo(() => applyFilters(bpjsMerged, bpjsFilters), [bpjsMerged, bpjsFilters])
-  const indomaretFiltered = useMemo(() => applyFilters(indomaretMerged, indomaretFilters), [indomaretMerged, indomaretFilters])
+  const spbuFiltered = useMemo(() => applyFilters(spbuMerged, spbuFilters, spbuLocked), [spbuMerged, spbuFilters, spbuLocked])
+  const bpjsFiltered = useMemo(() => applyFilters(bpjsMerged, bpjsFilters, bpjsLocked), [bpjsMerged, bpjsFilters, bpjsLocked])
+  const indomaretFiltered = useMemo(() => applyFilters(indomaretMerged, indomaretFilters, indomaretLocked), [indomaretMerged, indomaretFilters, indomaretLocked])
 
   // Cabang lists per tab
   const spbuCabangs = useMemo(() => cabangList(spbuMerged), [spbuMerged])
@@ -221,6 +238,9 @@ export default function BusinessMonitoringPage() {
                     filters={spbuFilters}
                     onFiltersChange={setSpbuFilters}
                     idasDate={spbu.metadata?.idasDate || spbu.data?.idasDate || '-'}
+                    dataType="spbu"
+                    isLocked={spbuLocked}
+                    onRefetch={refetchSpbu}
                   />
                 </div>
               </>
@@ -243,6 +263,9 @@ export default function BusinessMonitoringPage() {
                     filters={bpjsFilters}
                     onFiltersChange={setBpjsFilters}
                     idasDate={bpjs.metadata?.idasDate || bpjs.data?.idasDate || '-'}
+                    dataType="bpjs"
+                    isLocked={bpjsLocked}
+                    onRefetch={refetchBpjs}
                   />
                 </div>
               </>
@@ -265,6 +288,9 @@ export default function BusinessMonitoringPage() {
                     filters={indomaretFilters}
                     onFiltersChange={setIndomaretFilters}
                     idasDate={indomaret.metadata?.idasDate || indomaret.data?.idasDate || '-'}
+                    dataType="indomaret"
+                    isLocked={indomaretLocked}
+                    onRefetch={refetchIndomaret}
                   />
                 </div>
               </>

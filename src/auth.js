@@ -32,17 +32,25 @@ export const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role
         token.name = user.name
+        token.totpVerified = false
       }
+
+      if (trigger === 'update' && session?.totpVerified === true) {
+        token.totpVerified = true
+      }
+
       return token
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.sub
         session.user.role = token.role
         session.user.name = token.name
+        session.user.totpVerified = token.totpVerified === true
       }
       return session
     },
@@ -54,4 +62,3 @@ export const authOptions = {
 }
 
 export default NextAuth(authOptions)
-

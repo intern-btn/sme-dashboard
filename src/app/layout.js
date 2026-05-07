@@ -1,5 +1,6 @@
 import './globals.css'
 import Script from 'next/script'
+import AuthProvider from './components/AuthProvider'
 
 export const metadata = {
   title: 'SME Dashboard',
@@ -19,7 +20,7 @@ export default function RootLayout({ children }) {
           />
         )}
       </head>
-      <body>{children}</body>
+      <body><AuthProvider>{children}</AuthProvider></body>
     </html>
   )
 }

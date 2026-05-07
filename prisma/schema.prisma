@@ -8,14 +8,47 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  displayName  String
-  role         String   @default("viewer") // viewer | editor | approver | admin
-  kanwil       String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id             String             @id @default(cuid())
+  username       String             @unique
+  passwordHash   String
+  displayName    String
+  role           String             @default("viewer") // viewer | editor | approver | admin
+  kanwil         String?
+  isActive       Boolean            @default(true)
+  totpSecret     String?
+  totpEnabled    Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  totpAttempts   TotpAttempt[]
+  auditLogs      SecurityAuditLog[] @relation("AuditLogSubject")
+  actedAuditLogs SecurityAuditLog[] @relation("AuditLogActor")
+}
+
+model TotpAttempt {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  context   String
+  success   Boolean
+  ip        String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, context, createdAt])
+}
+
+model SecurityAuditLog {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  actorUserId String?
+  action      String
+  dataType    String?
+  ip          String
+  userAgent   String
+  createdAt   DateTime @default(now())
+  user        User     @relation("AuditLogSubject", fields: [userId], references: [id])
+  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([dataType, createdAt])
 }
 
 model Memo {

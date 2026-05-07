@@ -5,6 +5,7 @@ export async function middleware(req) {
   const { pathname } = req.nextUrl
 
   const isLoginPage = pathname === '/login'
+  const isTotpPage = pathname === '/verify-otp'
   const isAuthRoute = pathname.startsWith('/api/auth')
 
   if (isLoginPage || isAuthRoute) return NextResponse.next()
@@ -16,6 +17,17 @@ export async function middleware(req) {
     const callbackUrl = `${pathname}${req.nextUrl.search || ''}`
     const url = req.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('callbackUrl', callbackUrl)
+    return NextResponse.redirect(url)
+  }
+
+  if (token.totpVerified !== true) {
+    if (isTotpPage) return NextResponse.next()
+
+    const callbackUrl = `${pathname}${req.nextUrl.search || ''}`
+    const url = req.nextUrl.clone()
+    url.pathname = '/verify-otp'
+    url.search = ''
     url.searchParams.set('callbackUrl', callbackUrl)
     return NextResponse.redirect(url)
   }
@@ -33,4 +45,3 @@ export async function middleware(req) {
 export const config = {
   matcher: ['/((?!_next|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|gif|ico|css|js|map)$).*)'],
 }
-
