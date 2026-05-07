@@ -11,6 +11,7 @@ node_modules
 .env.local
 .env.production
 .env.development
+.env.production.selfhosted
 
 # vercel
 .vercel
@@ -21,3 +22,13 @@ node_modules
 
 # debug scripts
 inspect_bpjs*.js
+
+# local SQLite database
+dev.db
+
+# local migration runner (reads .env.local — run manually on Turso)
+_migrate.mjs
+
+# editor / tool config
+.claude/
+.superpowers/

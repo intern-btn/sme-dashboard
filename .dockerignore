@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.vercel
+
+# secrets — never bake env files into the image
+.env
+.env.local
+.env*.local
+.env.production
+.env.development
+.env.production.selfhosted
+
+# local dev / debug artefacts
+_migrate.mjs
+inspect_bpjs*.js
+*.md

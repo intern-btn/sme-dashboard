@@ -1,0 +1,8 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local      # copy .env.example → .env.local and fill in values
+    restart: unless-stopped
