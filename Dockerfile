@@ -1,13 +1,13 @@
 # ── Stage 1: install production dependencies ────────────────────────────────
 FROM node:24-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci --omit=dev
 
 # ── Stage 2: build ──────────────────────────────────────────────────────────
 FROM node:24-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
 

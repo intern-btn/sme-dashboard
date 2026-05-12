@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt'
 import { getStorage } from './storage/index.js'
 import { normKey, normName, toKolNum } from './business-utils.js'
 
-function computeMergeStats(parsedIdas, masterRows) {
+export function computeMergeStats(parsedIdas, masterRows) {
   const idasRows = Array.isArray(parsedIdas?.rows) ? parsedIdas.rows : []
   const rows = Array.isArray(masterRows) ? masterRows : []
   if (rows.length === 0) return null

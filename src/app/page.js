@@ -3,8 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth.js'
 import AppHeader from './components/AppHeader.jsx'
 import { getStorage } from '../lib/storage/index.js'
-
-const BTN_NAVY = '#003d7a'
+import { computeMergeStats } from '../lib/business-upload-handler.js'
 
 function formatDateTime(dateString) {
   if (!dateString) return '-'
@@ -22,124 +21,65 @@ function formatDateTime(dateString) {
   }
 }
 
-function getStatus(uploadDate) {
-  if (!uploadDate) return { type: 'nodata', label: 'Belum ada data' }
-
-  const diffHours = (Date.now() - new Date(uploadDate).getTime()) / 36e5
-  if (diffHours < 24) {
-    return { type: 'live', label: `LIVE - ${formatDateTime(uploadDate)}` }
-  }
-
-  return { type: 'stale', label: formatDateTime(uploadDate) }
+function fmt(val) {
+  if (val == null || isNaN(val)) return '–'
+  return Number(val).toLocaleString('id-ID')
 }
 
-function ModuleIcon({ type }) {
-  const commonProps = {
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    className: 'w-6 h-6',
-    'aria-hidden': true,
-  }
+function fmtJt(val) {
+  if (val == null || isNaN(val)) return '–'
+  return (val / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 0 })
+}
 
-  if (type === 'monitoring') {
-    return (
-      <svg {...commonProps}>
-        <path d="M3 21h18" />
-        <path d="M7 17V9" />
-        <path d="M12 17V5" />
-        <path d="M17 17v-7" />
-      </svg>
-    )
-  }
+function fmtPct(val) {
+  if (val == null || isNaN(val)) return '–'
+  return `${Number(val).toFixed(2)}%`
+}
 
-  if (type === 'spbu') {
-    return (
-      <svg {...commonProps}>
-        <path d="M5 20V7a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v13" />
-        <path d="M5 20h10" />
-        <path d="M8 9h3" />
-        <path d="M14 8h1.5a2 2 0 0 1 2 2v5.5a1.5 1.5 0 0 0 3 0V12" />
-        <path d="M18.5 9.5 17 8" />
-      </svg>
-    )
-  }
+function isLive(uploadDate) {
+  if (!uploadDate) return null
+  return (Date.now() - new Date(uploadDate).getTime()) / 36e5 < 24
+}
 
-  if (type === 'memo') {
-    return (
-      <svg {...commonProps}>
-        <path d="M8 3h6l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-        <path d="M14 3v5h5" />
-        <path d="M9 12h6" />
-        <path d="M9 16h6" />
-      </svg>
-    )
-  }
-
+function FreshnessDot({ uploadDate }) {
+  const live = isLive(uploadDate)
+  if (live === null) return <span className="inline-flex w-2 h-2 rounded-full bg-gray-300" />
   return (
-    <svg {...commonProps}>
-      <path d="M12 3 5 6v6c0 4.2 2.7 8.1 7 9 4.3-.9 7-4.8 7-9V6l-7-3Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
+    <span className={`inline-flex w-2 h-2 rounded-full ${live ? 'bg-green-400 animate-pulse' : 'bg-amber-400'}`} />
   )
 }
 
-function StatusBadge({ status }) {
-  if (status.type === 'restricted') {
-    return (
-      <div className="flex items-center gap-2 text-xs font-medium text-gray-400 transition-colors duration-200 group-hover:text-blue-200">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-3.5 h-3.5"
-          aria-hidden="true"
-        >
-          <path d="M12 3 5 6v6c0 4.2 2.7 8.1 7 9 4.3-.9 7-4.8 7-9V6l-7-3Z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-        <span>{status.label}</span>
-      </div>
-    )
-  }
-
-  if (status.type === 'locked') {
-    return (
-      <div className="flex items-center gap-2 text-xs font-medium text-gray-400 transition-colors duration-200 group-hover:text-blue-200">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-3.5 h-3.5"
-          aria-hidden="true"
-        >
-          <rect x="5" y="11" width="14" height="10" rx="2" />
-          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-        </svg>
-        <span>{status.label}</span>
-      </div>
-    )
-  }
-
-  const dotClass = status.type === 'live'
-    ? 'bg-green-400 animate-pulse'
-    : status.type === 'stale'
-      ? 'bg-amber-400'
-      : 'bg-gray-300'
-
+function SectionHeader({ title, href }) {
   return (
-    <div className="flex items-center gap-2 text-xs font-medium text-gray-400 transition-colors duration-200 group-hover:text-blue-200">
-      <span className={`inline-flex w-2 h-2 rounded-full ${dotClass}`} aria-hidden="true" />
-      <span>{status.label}</span>
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{title}</h2>
+      <Link href={href} className="text-xs font-medium text-[#003d7a] hover:underline underline-offset-2">
+        Lihat detail →
+      </Link>
+    </div>
+  )
+}
+
+function StatCard({ label, uploadDate, children }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#003d7a] transition-all duration-200 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+        <FreshnessDot uploadDate={uploadDate} />
+      </div>
+      <div className="flex-1">{children}</div>
+      {uploadDate && (
+        <p className="text-[10px] text-gray-400 border-t border-gray-100 pt-2">{formatDateTime(uploadDate)}</p>
+      )}
+    </div>
+  )
+}
+
+function MetricRow({ label, value }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-xs text-gray-500 truncate">{label}</span>
+      <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">{value}</span>
     </div>
   )
 }
@@ -149,104 +89,200 @@ export default async function HubPage() {
   const user = session?.user ? { name: session.user.name, role: session.user.role } : null
 
   const storage = getStorage()
-  const monitoringMeta = await storage.get('npl_metadata.json')
-  const spbuMeta = await storage.get('prk_spbu_metadata.json')
 
-  const cards = [
-    {
-      title: 'Monitoring',
-      desc: 'Pusat monitoring bisnis untuk dashboard kredit utama dan PRK SPBU.',
-      icon: 'monitoring',
-      status: getStatus(
-        [monitoringMeta?.uploadDate, spbuMeta?.uploadDate]
-          .filter(Boolean)
-          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
-      ),
-      links: [{ href: '/monitoring', label: 'Buka Monitoring' }],
-    },
-    {
-      title: 'Memo',
-      desc: 'Kelola memo dari draft, review, approved, sampai distribusi dan lampiran.',
-      icon: 'memo',
-      status: { type: 'locked', label: 'Login diperlukan' },
-      links: [{ href: '/memo', label: 'Buka Memo' }],
-    },
-    ...(user?.role === 'admin'
-      ? [{
-          title: 'Admin',
-          desc: 'Upload data, kelola user, dan kontrol operasional dashboard.',
-          icon: 'admin',
-          status: { type: 'restricted', label: 'Khusus admin' },
-          links: [{ href: '/admin', label: 'Buka Admin Portal' }],
-        }]
-      : []),
-  ]
+  const [
+    nplMeta, nplData,
+    kol2Meta, kol2Data,
+    realKreditMeta, realKreditData,
+    posisiMeta, posisiData,
+    realHarianMeta, realHarianData,
+    spbuMeta, spbuIdasData, spbuManualData,
+    bpjsMeta, bpjsIdasData, bpjsManualData,
+    indomaretMeta, indomaretIdasData, indomaretManualData,
+  ] = await Promise.all([
+    storage.get('npl_metadata.json'),
+    storage.get('npl_parsed.json'),
+    storage.get('kol2_metadata.json'),
+    storage.get('kol2_parsed.json'),
+    storage.get('realisasi_kredit_metadata.json'),
+    storage.get('realisasi_kredit_parsed.json'),
+    storage.get('posisi_kredit_metadata.json'),
+    storage.get('posisi_kredit_parsed.json'),
+    storage.get('realisasi_metadata.json'),
+    storage.get('realisasi_parsed.json'),
+    storage.get('prk_spbu_metadata.json'),
+    storage.get('prk_spbu_parsed.json'),
+    storage.get('prk_spbu_manual_parsed.json'),
+    storage.get('bpjs_metadata.json'),
+    storage.get('bpjs_parsed.json'),
+    storage.get('bpjs_manual_parsed.json'),
+    storage.get('indomaret_metadata.json'),
+    storage.get('indomaret_parsed.json'),
+    storage.get('indomaret_manual_parsed.json'),
+  ])
+
+  const spbuStats = computeMergeStats(spbuIdasData, spbuManualData?.rows)
+  const bpjsStats = computeMergeStats(bpjsIdasData, bpjsManualData?.rows)
+  const indomaretStats = computeMergeStats(indomaretIdasData, indomaretManualData?.rows)
+
+  const mtdCurrent = realHarianData?.monthlyTotals?.current
+  const mtdPrevious = realHarianData?.monthlyTotals?.previous
+  const mtdGrowthPct = mtdCurrent && mtdPrevious
+    ? ((mtdCurrent - mtdPrevious) / mtdPrevious * 100).toFixed(2)
+    : null
+
+  const npl = nplData?.totalNasional
+  const kol2 = kol2Data?.totalNasional
+  const realK = realKreditData?.totalNasional
+  const posisi = posisiData?.totalNasional
 
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader user={user} />
 
-      <main className="max-w-screen-xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Beranda</h1>
-          <p className="text-sm text-gray-400 mt-0.5 uppercase tracking-widest text-[11px]">
-            Pilih modul
+      <div style={{ backgroundColor: '#003d7a' }}>
+        <div className="max-w-screen-xl mx-auto px-4 py-6">
+          <p className="text-[11px] font-semibold text-white/50 uppercase tracking-widest mb-1">
+            {user ? 'Selamat datang kembali' : 'Selamat datang'}
           </p>
+          <h2 className="text-2xl font-bold text-white leading-none">
+            {user?.name ?? 'SME Dashboard'}
+          </h2>
+          <p className="text-sm text-white/50 mt-1">Business Banking Division</p>
         </div>
+        <div style={{ height: 3, background: 'linear-gradient(90deg, #E80025, transparent)' }} />
+      </div>
 
-        <div className="flex flex-col gap-3">
-          {cards.map((card) => {
-            const primaryLink = card.links[0]
+      <main className="max-w-screen-xl mx-auto px-4 py-8 space-y-10">
 
-            return (
-              <div
-                key={card.title}
-                className="group relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 hover:bg-[#003d7a] hover:border-[#003d7a]"
-              >
-                <div className="absolute inset-y-0 left-0 w-1.5 bg-[#003d7a] transition-colors duration-200 group-hover:bg-white/40" />
+        {/* Kredit Monitoring */}
+        <section>
+          <SectionHeader title="Kredit Monitoring" href="/monitoring" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-                <div className="flex flex-col gap-4 px-7 py-5 pl-8 md:flex-row md:items-center md:gap-5">
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-[#e8f0fe] text-[#003d7a] flex items-center justify-center transition-all duration-200 group-hover:bg-white/15 group-hover:text-white shrink-0">
-                      <ModuleIcon type={card.icon} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <h2 className="text-[1.65rem] leading-none font-bold text-gray-900 transition-colors duration-200 group-hover:text-white">
-                        {card.title}
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-1 transition-colors duration-200 group-hover:text-blue-100">
-                        {card.desc}
-                      </p>
-                      <div className="mt-3">
-                        <StatusBadge status={card.status} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 md:flex-shrink-0">
-                    <Link
-                      href={primaryLink.href}
-                      className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 bg-[#003d7a] group-hover:bg-white group-hover:text-[#003d7a]"
-                    >
-                      {primaryLink.label}
-                    </Link>
-
-                    {card.secondaryLinks?.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className="text-sm font-medium text-[#003d7a] underline underline-offset-4 transition-colors duration-200 group-hover:text-white/80"
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+            <StatCard label="NPL" uploadDate={nplMeta?.uploadDate}>
+              <p className="text-2xl font-bold text-[#003d7a] leading-none">
+                {fmt(npl?.total_current)}
+                <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+              </p>
+              <div className="mt-2 space-y-1">
+                <MetricRow label="KUMK" value={fmtPct(npl?.kumkPercent_current)} />
+                <MetricRow label="KUR" value={fmtPct(npl?.kurPercent_current)} />
+                <MetricRow label="Total" value={fmtPct(npl?.totalPercent_current)} />
               </div>
-            )
-          })}
-        </div>
+            </StatCard>
+
+            <StatCard label="KOL 2" uploadDate={kol2Meta?.uploadDate}>
+              <p className="text-2xl font-bold text-[#003d7a] leading-none">
+                {fmt(kol2?.total_current)}
+                <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+              </p>
+              <div className="mt-2 space-y-1">
+                <MetricRow label="KUMK" value={fmtPct(kol2?.kumkPercent_current)} />
+                <MetricRow label="KUR" value={fmtPct(kol2?.kurPercent_current)} />
+                <MetricRow label="Total" value={fmtPct(kol2?.totalPercent_current)} />
+              </div>
+            </StatCard>
+
+            <StatCard label="Realisasi Kredit" uploadDate={realKreditMeta?.uploadDate}>
+              <div className="space-y-1.5">
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">KUMK</p>
+                  <p className="text-xl font-bold text-[#003d7a] leading-tight">
+                    {fmt(realK?.kumk_real_current)}
+                    <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+                  </p>
+                </div>
+                <MetricRow label="KUR" value={`${fmt(realK?.kur_total_current)} Jt`} />
+                <MetricRow label="UMKM" value={`${fmt(realK?.umkm_real_current)} Jt`} />
+              </div>
+            </StatCard>
+
+            <StatCard label="Posisi Kredit" uploadDate={posisiMeta?.uploadDate}>
+              <p className="text-2xl font-bold text-[#003d7a] leading-none">
+                {fmt(posisi?.posisi_current)}
+                <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+              </p>
+              <div className="mt-2 space-y-1">
+                <MetricRow label="Gap MTD" value={`${fmt(posisi?.gap_mtd)} Jt`} />
+                <MetricRow label="Gap YoY" value={`${fmt(posisi?.gap_yoy)} Jt`} />
+              </div>
+            </StatCard>
+          </div>
+        </section>
+
+        {/* Realisasi Harian */}
+        <section>
+          <SectionHeader title="Realisasi Harian" href="/monitoring" />
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#003d7a] transition-all duration-200">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+              <div className="flex items-center gap-2 shrink-0">
+                <FreshnessDot uploadDate={realHarianMeta?.uploadDate} />
+                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">MTD Total</span>
+              </div>
+              <div className="flex flex-wrap gap-x-8 gap-y-3 flex-1">
+                <div>
+                  <p className="text-2xl font-bold text-[#003d7a] leading-none">
+                    {fmt(mtdCurrent)}
+                    <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Bulan berjalan</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-600 leading-none">
+                    {fmt(mtdPrevious)}
+                    <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Bulan lalu</p>
+                </div>
+                {mtdGrowthPct !== null && (
+                  <div>
+                    <p className={`text-lg font-semibold leading-none ${parseFloat(mtdGrowthPct) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {parseFloat(mtdGrowthPct) >= 0 ? '+' : ''}{mtdGrowthPct}%
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">vs bulan lalu</p>
+                  </div>
+                )}
+              </div>
+              {realHarianMeta?.uploadDate && (
+                <p className="text-[10px] text-gray-400 shrink-0">{formatDateTime(realHarianMeta.uploadDate)}</p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Business Monitoring */}
+        <section>
+          <SectionHeader title="Business Monitoring" href="/monitoring/business" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { label: 'PRK SPBU', meta: spbuMeta, stats: spbuStats },
+              { label: 'BPJS', meta: bpjsMeta, stats: bpjsStats },
+              { label: 'Indomaret', meta: indomaretMeta, stats: indomaretStats },
+            ].map(({ label, meta, stats }) => (
+              <StatCard key={label} label={label} uploadDate={meta?.uploadDate}>
+                {stats ? (
+                  <>
+                    <p className="text-2xl font-bold text-[#003d7a] leading-none">
+                      {stats.masterTotal.toLocaleString('id-ID')}
+                      <span className="text-xs font-normal text-gray-500 ml-1">debitur</span>
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      <MetricRow
+                        label="Ditemukan di IDAS"
+                        value={`${stats.idasFound.toLocaleString('id-ID')} / ${stats.masterTotal.toLocaleString('id-ID')}`}
+                      />
+                      <MetricRow label="Baki Debet" value={`${fmtJt(stats.totalBakiDebet)} Jt`} />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">Belum ada data</p>
+                )}
+              </StatCard>
+            ))}
+          </div>
+        </section>
+
       </main>
     </div>
   )

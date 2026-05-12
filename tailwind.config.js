@@ -9,7 +9,7 @@ module.exports = {
     extend: {
       colors: {
         'btn-blue': '#003d7a',
-        'btn-orange': '#e84e0f',
+        'btn-red': '#E80025',
       },
       keyframes: {
         slide: {
