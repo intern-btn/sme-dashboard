@@ -11,10 +11,14 @@ export async function verifyPassword(password, passwordHash) {
 
 // 16 chars, mixed-case + digits + safe symbols, ~95 bits entropy
 export function generateTempPassword() {
-  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&'
-  const buf = crypto.randomBytes(16)
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&'
+  const fairBound = 256 - (256 % charset.length) // eliminate modulo bias
   let out = ''
-  for (let i = 0; i < 16; i++) out += charset[buf[i] % charset.length]
+  while (out.length < 16) {
+    const buf = crypto.randomBytes(32)
+    for (let i = 0; i < buf.length && out.length < 16; i++) {
+      if (buf[i] < fairBound) out += charset[buf[i] % charset.length]
+    }
+  }
   return out
 }
-
