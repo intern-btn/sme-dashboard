@@ -29,7 +29,7 @@ dev.db
 prisma/*.db
 
 # runtime data (file-based storage for local dev — Vercel Blob in production)
-data/
+/data/
 
 # local migration runner (reads .env.local — run manually on Turso)
 _migrate.mjs

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { getStorage } from '../../../../../lib/storage/index.js'
-import { verifyUnlockToken } from '../../../../../lib/crypto.js'
+import { getStorage } from '../../../../../../lib/storage/index.js'
+import { verifyUnlockToken } from '../../../../../../lib/crypto.js'
 
 export const runtime = 'nodejs'
 
