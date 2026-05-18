@@ -22,9 +22,11 @@ node_modules
 
 # debug scripts
 inspect_bpjs*.js
+inspect_excel*.js
 
 # local SQLite database
 dev.db
+prisma/*.db
 
 # runtime data (file-based storage for local dev — Vercel Blob in production)
 data/

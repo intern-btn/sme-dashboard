@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//c/Users/Lenovo/Documents/Ridwan/Intern-BTN/field-test \\(6. Web Monitor\\)/ref/ip/**)",
-      "Bash(python3:*)"
-    ]
-  }
-}
