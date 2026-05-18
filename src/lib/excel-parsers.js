@@ -939,7 +939,7 @@ function getColumnIndex(headerRow, candidates) {
   return -1
 }
 
-function buildMonitoringSummary(rows) {
+export function buildMonitoringSummary(rows) {
   const kolBreakdown = { 1: 0, 2: 0, '3+': 0 }
   let nplCount = 0
   const cabangSet = new Set()

@@ -6,15 +6,9 @@ import AppHeader from '../components/AppHeader'
 
 export default function AdminPage() {
   const [user, setUser] = useState(null)
-  const [nplFile, setNplFile] = useState(null)
-  const [kol2File, setKol2File] = useState(null)
-  const [realisasiFile, setRealisasiFile] = useState(null)
-  const [realisasiKreditFile, setRealisasiKreditFile] = useState(null)
-  const [posisiKreditFile, setPosisiKreditFile] = useState(null)
   const [multiSheetFile, setMultiSheetFile] = useState(null)
   const [spbuIdasFile, setSpbuIdasFile] = useState(null)
   const [spbuManualFile, setSpbuManualFile] = useState(null)
-  const [uploadMode, setUploadMode] = useState('separate') // 'separate' | 'multi'
   const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'spbu' | 'bpjs' | 'indomaret'
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState('') // 'uploading' | 'processing' | ''
@@ -43,6 +37,8 @@ export default function AdminPage() {
   const [currentData, setCurrentData] = useState({ npl: null, kol2: null, realisasi: null, realisasi_kredit: null, posisi_kredit: null, prk_spbu: null, bpjs: null, indomaret: null })
   const [history, setHistory] = useState([])
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [auditLog, setAuditLog] = useState([])
+  const [resetModal, setResetModal] = useState({ open: false, module: null, password: '', error: '', loading: false })
 
   useEffect(() => {
     fetch('/api/auth/check')
@@ -52,6 +48,7 @@ export default function AdminPage() {
       .finally(() => {
         fetchCurrentStatus()
         fetchHistory()
+        fetchAuditLog()
       })
   }, [])
 
@@ -79,60 +76,48 @@ export default function AdminPage() {
     }
   }
 
-  const handleSeparateFilesUpload = async () => {
-    if (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile) {
-      setError('Pilih minimal 1 file Excel')
-      return
-    }
-
-    setUploading(true)
-    setMessage('')
-    setError('')
-    setUploadStats(null)
-    setUploadProgress(0)
-
+  const fetchAuditLog = async () => {
     try {
-      const formData = new FormData()
-      if (nplFile) formData.append('npl', nplFile)
-      if (kol2File) formData.append('kol2', kol2File)
-      if (realisasiFile) formData.append('realisasi', realisasiFile)
-      if (realisasiKreditFile) formData.append('realisasi_kredit', realisasiKreditFile)
-      if (posisiKreditFile) formData.append('posisi_kredit', posisiKreditFile)
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || result.details || 'Upload failed')
+      const response = await fetch('/api/data/admin/audit_log')
+      if (response.ok) {
+        const data = await response.json()
+        setAuditLog(Array.isArray(data?.entries) ? data.entries.slice(0, 50) : [])
       }
+    } catch {
+      // Silently handle
+    }
+  }
 
-      setMessage('File berhasil diupload dan diproses!')
-      setUploadStats(result.stats)
-      setNplFile(null)
-      setKol2File(null)
-      setRealisasiFile(null)
-      setRealisasiKreditFile(null)
-      setPosisiKreditFile(null)
+  const RESET_LABELS = { monitoring: 'Credit Monitoring', spbu: 'PRK SPBU', bpjs: 'BPJS', indomaret: 'Indomaret' }
 
-      document.querySelectorAll('input[type="file"]').forEach(input => {
-        input.value = ''
+  const handleReset = async () => {
+    if (!resetModal.password) return
+    setResetModal(p => ({ ...p, loading: true, error: '' }))
+    try {
+      const confirmRes = await fetch('/api/admin/confirm-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: resetModal.password }),
       })
-
-      setTimeout(() => {
-        fetchCurrentStatus()
-        fetchHistory()
-      }, 1000)
-
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setUploading(false)
-      setUploadProgress(0)
-      setUploadStep('')
+      const confirmData = await confirmRes.json()
+      if (!confirmRes.ok) {
+        setResetModal(p => ({ ...p, loading: false, error: confirmData.error || 'Password salah' }))
+        return
+      }
+      const apiType = resetModal.module === 'monitoring' ? 'credit' : resetModal.module
+      const resetRes = await fetch(`/api/admin/data/${apiType}/reset`, {
+        method: 'POST',
+        headers: { 'x-confirm-token': confirmData.confirmToken },
+      })
+      const resetData = await resetRes.json()
+      if (!resetRes.ok) {
+        setResetModal(p => ({ ...p, loading: false, error: resetData.error || 'Reset gagal' }))
+        return
+      }
+      setResetModal({ open: false, module: null, password: '', error: '', loading: false })
+      setTimeout(() => { fetchCurrentStatus(); fetchHistory(); fetchAuditLog() }, 500)
+    } catch {
+      setResetModal(p => ({ ...p, loading: false, error: 'Terjadi kesalahan. Coba lagi.' }))
     }
   }
 
@@ -217,14 +202,6 @@ export default function AdminPage() {
       setUploading(false)
       setUploadProgress(0)
       setUploadStep('')
-    }
-  }
-
-  const handleUpload = async () => {
-    if (uploadMode === 'multi') {
-      await handleMultiSheetUpload()
-    } else {
-      await handleSeparateFilesUpload()
     }
   }
 
@@ -539,117 +516,22 @@ export default function AdminPage() {
             <div className="p-6">
             {activeTab === 'monitoring' && (<>
 
-            {/* Mode Toggle */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Mode</label>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setUploadMode('separate')}
-                  className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
-                    uploadMode === 'separate'
-                      ? 'bg-blue-900 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Separate Files (5 files)
-                </button>
-                <button
-                  onClick={() => setUploadMode('multi')}
-                  className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
-                    uploadMode === 'multi'
-                      ? 'bg-blue-900 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Multi-Sheet (1 file, max 15MB)
-                </button>
-              </div>
-            </div>
-
-            {uploadMode === 'separate' ? (
-              <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  1. NPL SME (.xlsx)
-                </label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setNplFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {nplFile && <p className="mt-1 text-sm text-green-600">{nplFile.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  2. Kol 2 SME (.xlsx)
-                </label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setKol2File(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {kol2File && <p className="mt-1 text-sm text-green-600">{kol2File.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  3. Realisasi Harian (.xlsx)
-                </label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setRealisasiFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {realisasiFile && <p className="mt-1 text-sm text-green-600">{realisasiFile.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  4. Realisasi Kredit (.xlsx)
-                </label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setRealisasiKreditFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {realisasiKreditFile && <p className="mt-1 text-sm text-green-600">{realisasiKreditFile.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  5. Posisi Kredit (.xlsx)
-                </label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setPosisiKreditFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {posisiKreditFile && <p className="mt-1 text-sm text-green-600">{posisiKreditFile.name}</p>}
-              </div>
-            </div>
-            ) : (
-              <div className="space-y-4">
+            <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-blue-900">
                     <strong>Multi-Sheet Excel:</strong> Upload satu file Excel yang berisi 5 sheet dengan awalan:
                   </p>
                   <ul className="text-xs text-blue-800 mt-2 ml-4 space-y-1">
-                    <li>â€¢ <strong>22a</strong> - Realisasi Harian</li>
-                    <li>â€¢ <strong>44a1</strong> - Realisasi Kredit</li>
-                    <li>â€¢ <strong>44b</strong> - Posisi Kredit</li>
-                    <li>â€¢ <strong>49b</strong> - KOL 2</li>
-                    <li>â€¢ <strong>49c</strong> - NPL</li>
+                    <li>• <strong>22a</strong> - Realisasi Harian</li>
+                    <li>• <strong>44a1</strong> - Realisasi Kredit</li>
+                    <li>• <strong>44b</strong> - Posisi Kredit</li>
+                    <li>• <strong>49b</strong> - KOL 2</li>
+                    <li>• <strong>49c</strong> - NPL</li>
                   </ul>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Multi-Sheet Excel File (.xlsx, max 15MB)
+                    Multi-Sheet Excel File (.xlsx)
                   </label>
                   <input
                     type="file"
@@ -667,13 +549,12 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-            )}
 
             <button
-              onClick={handleUpload}
-              disabled={uploading || (uploadMode === 'multi' ? !multiSheetFile : (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile))}
+              onClick={handleMultiSheetUpload}
+              disabled={uploading || !multiSheetFile}
               className={`mt-6 w-full py-3 rounded-lg font-semibold text-white transition-colors ${
-                uploading || (uploadMode === 'multi' ? !multiSheetFile : (!nplFile && !kol2File && !realisasiFile && !realisasiKreditFile && !posisiKreditFile))
+                uploading || !multiSheetFile
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-900 hover:bg-blue-800'
               }`}
@@ -740,6 +621,8 @@ export default function AdminPage() {
               </div>
             )}
 
+            <DangerZone onReset={() => setResetModal({ open: true, module: 'monitoring', password: '', error: '', loading: false })} />
+
             </>)}
 
             {activeTab === 'spbu' && (
@@ -783,6 +666,7 @@ export default function AdminPage() {
 
                 {spbuUploading && (() => {
                   const steps = [
+                    { key: 'fetching_master', label: 'Mengambil data master', pct: 25 },
                     { key: 'parsing', label: 'Membaca dan memproses file', pct: 65 },
                     { key: 'saving', label: 'Menyimpan data', pct: 95 },
                   ]
@@ -838,6 +722,8 @@ export default function AdminPage() {
                     <p className="text-red-700">{spbuError}</p>
                   </div>
                 )}
+
+                <DangerZone onReset={() => setResetModal({ open: true, module: 'spbu', password: '', error: '', loading: false })} />
               </div>
             )}
 
@@ -882,6 +768,7 @@ export default function AdminPage() {
 
                 {bpjsUploading && (() => {
                   const steps = [
+                    { key: 'fetching_master', label: 'Mengambil data master', pct: 25 },
                     { key: 'parsing', label: 'Membaca dan memproses file', pct: 65 },
                     { key: 'saving', label: 'Menyimpan data', pct: 95 },
                   ]
@@ -933,6 +820,8 @@ export default function AdminPage() {
                     <p className="text-red-700">{bpjsError}</p>
                   </div>
                 )}
+
+                <DangerZone onReset={() => setResetModal({ open: true, module: 'bpjs', password: '', error: '', loading: false })} />
               </div>
             )}
 
@@ -977,6 +866,7 @@ export default function AdminPage() {
 
                 {indomaretUploading && (() => {
                   const steps = [
+                    { key: 'fetching_master', label: 'Mengambil data master', pct: 25 },
                     { key: 'parsing', label: 'Membaca dan memproses file', pct: 65 },
                     { key: 'saving', label: 'Menyimpan data', pct: 95 },
                   ]
@@ -1028,6 +918,8 @@ export default function AdminPage() {
                     <p className="text-red-700">{indomaretError}</p>
                   </div>
                 )}
+
+                <DangerZone onReset={() => setResetModal({ open: true, module: 'indomaret', password: '', error: '', loading: false })} />
               </div>
             )}
 
@@ -1124,8 +1016,106 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Audit Log */}
+        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Riwayat Aksi Admin</h2>
+          {auditLog.length === 0 ? (
+            <p className="text-sm text-gray-500">Belum ada aksi tercatat.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Waktu</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Admin</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Aksi</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Modul</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLog.map((entry, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 text-gray-700">{formatDate(entry.timestamp)}</td>
+                      <td className="py-3 px-4 text-gray-700">{entry.adminEmail}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">Reset IDAS</span>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{entry.module}</td>
+                      <td className="py-3 px-4 text-gray-600">{entry.detail}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         </div>
       </div>
+
+      {/* Password Confirmation Modal */}
+      {resetModal.open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md">
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Konfirmasi Reset</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Masukkan password admin untuk mereset data{' '}
+                <strong>{RESET_LABELS[resetModal.module]}</strong>.
+                Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <input
+                type="password"
+                value={resetModal.password}
+                onChange={(e) => setResetModal(p => ({ ...p, password: e.target.value, error: '' }))}
+                onKeyDown={(e) => e.key === 'Enter' && !resetModal.loading && handleReset()}
+                placeholder="Password"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 mb-3"
+                autoFocus
+              />
+              {resetModal.error && (
+                <p className="text-sm text-red-600 mb-3">{resetModal.error}</p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setResetModal({ open: false, module: null, password: '', error: '', loading: false })}
+                  disabled={resetModal.loading}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleReset}
+                  disabled={resetModal.loading || !resetModal.password}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resetModal.loading ? 'Memproses...' : 'Reset'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DangerZone({ onReset }) {
+  return (
+    <div className="mt-6 border border-red-200 rounded-lg p-4 bg-red-50">
+      <p className="text-sm font-semibold text-red-800 mb-1">Danger Zone</p>
+      <p className="text-xs text-red-700 mb-3">
+        Reset data IDAS akan menghapus snapshot, trend, dan history upload untuk modul ini.
+        File master (referensi debitur) tidak akan terpengaruh.
+      </p>
+      <button
+        onClick={onReset}
+        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+      >
+        Reset IDAS
+      </button>
     </div>
   )
 }

@@ -54,7 +54,16 @@ export default function BusinessDashboard({ trend, mergedRows }) {
               <LineChart data={points}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis tickFormatter={(v) => `${Math.round((v || 0) / 1_000_000)}M`} />
+                <YAxis
+                  width={72}
+                  tickFormatter={(v) => {
+                    const n = Number(v) || 0
+                    if (n >= 1e12) return `${(n / 1e12).toFixed(1)}T`
+                    if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+                    if (n >= 1e6) return `${Math.round(n / 1e6)}M`
+                    return `${n}`
+                  }}
+                />
                 <Tooltip formatter={(v) => formatRp(v)} />
                 <Legend />
                 <Line
