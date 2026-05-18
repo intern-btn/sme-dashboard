@@ -14,7 +14,8 @@ model User {
   displayName    String
   role           String             @default("viewer") // viewer | editor | approver | admin
   kanwil         String?
-  isActive       Boolean            @default(true)
+  isActive            Boolean            @default(true)
+  mustChangePassword  Boolean            @default(false)
   totpSecret     String?
   totpEnabled    Boolean            @default(false)
   createdAt      DateTime           @default(now())
