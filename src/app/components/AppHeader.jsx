@@ -94,7 +94,10 @@ export default function AppHeader({
     { href: '/', label: 'Beranda' },
     { href: '/monitoring', label: 'Monitoring' },
     { href: '/memo', label: 'Memo' },
-    ...(role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
+    ...(role === 'admin' ? [
+      { href: '/admin', label: 'Admin', exact: true },
+      { href: '/admin/settings', label: 'Settings' },
+    ] : []),
   ]
 
   useLayoutEffect(() => {
@@ -161,7 +164,7 @@ export default function AppHeader({
 
           <nav className="hidden sm:flex items-center gap-1">
             {mainNav.map(item => {
-              const active = isActive(pathname, item.href)
+              const active = item.exact ? pathname === item.href : isActive(pathname, item.href)
               return (
                 <Link
                   key={item.href}
