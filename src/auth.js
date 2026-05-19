@@ -22,7 +22,7 @@ export const authOptions = {
         const valid = await verifyPassword(password, user.passwordHash)
         if (!valid) return null
 
-        return { id: user.id, name: user.username, role: user.role, mustChangePassword: user.mustChangePassword }
+        return { id: user.id, name: user.username, role: user.role, mustChangePassword: user.mustChangePassword ?? false }
       },
     }),
     // Future: Microsoft Entra ID provider can be added here without rewriting consumers.
@@ -44,7 +44,13 @@ export const authOptions = {
         token.totpVerified = true
       }
       if (trigger === 'update' && session?.mustChangePassword === false) {
-        token.mustChangePassword = false
+        // Verify against DB — don't trust client payload for security-sensitive flags
+        // Called from change-password page after confirmed DB write
+        const freshUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { mustChangePassword: true }
+        })
+        token.mustChangePassword = freshUser?.mustChangePassword ?? true
       }
 
       return token
