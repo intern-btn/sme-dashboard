@@ -1,24 +1,21 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../auth.js'
+import { getToken } from 'next-auth/jwt'
 import { prisma } from '../../../../lib/db.js'
 import { hashPassword, generateTempPassword } from '../../../../lib/auth.js'
 import { getClientIp, getUserAgent } from '../../../../lib/request-meta.js'
 
 export const runtime = 'nodejs'
 
-async function requireAdminSession() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id || session.user.role !== 'admin' || session.user.totpVerified !== true) {
-    return null
-  }
-  return session
+async function requireAdmin(request) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token || token.role !== 'admin' || token.totpVerified !== true) return null
+  return token
 }
 
 // GET /api/auth/users — list all users (admin only)
 export async function GET(request) {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const token = await requireAdmin(request)
+  if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const users = await prisma.user.findMany({
     select: {
@@ -39,8 +36,8 @@ export async function GET(request) {
 
 // POST /api/auth/users — create a new user (admin only), auto-generates password
 export async function POST(request) {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const token = await requireAdmin(request)
+  if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
   const { username, displayName, role, kanwil } = body
@@ -84,7 +81,7 @@ export async function POST(request) {
   await prisma.securityAuditLog.create({
     data: {
       userId: newUser.id,
-      actorUserId: session.user.id,
+      actorUserId: token.sub,
       action: 'user_create',
       ip: getClientIp(request),
       userAgent: getUserAgent(request),
@@ -96,8 +93,8 @@ export async function POST(request) {
 
 // PATCH /api/auth/users — update a user (admin only)
 export async function PATCH(request) {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const token = await requireAdmin(request)
+  if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
   const { id, displayName, role, kanwil, isActive } = body
@@ -111,12 +108,12 @@ export async function PATCH(request) {
   }
 
   // Self-demote guard
-  if (id === session.user.id && role !== undefined && role !== session.user.role) {
+  if (id === token.sub && role !== undefined && role !== token.role) {
     return NextResponse.json({ error: 'Tidak dapat mengubah role akun sendiri' }, { status: 403 })
   }
 
   // Self-deactivate guard
-  if (id === session.user.id && isActive === false) {
+  if (id === token.sub && isActive === false) {
     return NextResponse.json({ error: 'Tidak dapat menonaktifkan akun sendiri' }, { status: 403 })
   }
 
@@ -169,7 +166,7 @@ export async function PATCH(request) {
   await prisma.securityAuditLog.create({
     data: {
       userId: id,
-      actorUserId: session.user.id,
+      actorUserId: token.sub,
       action,
       ip: getClientIp(request),
       userAgent: getUserAgent(request),
@@ -181,8 +178,8 @@ export async function PATCH(request) {
 
 // DELETE /api/auth/users — delete a user (admin only)
 export async function DELETE(request) {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const token = await requireAdmin(request)
+  if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
   const { id, confirmUsername } = body
@@ -191,7 +188,7 @@ export async function DELETE(request) {
   }
 
   // Self-delete guard
-  if (id === session.user.id) {
+  if (id === token.sub) {
     return NextResponse.json({ error: 'Tidak dapat menghapus akun sendiri' }, { status: 403 })
   }
 
@@ -226,8 +223,8 @@ export async function DELETE(request) {
 
   await prisma.securityAuditLog.create({
     data: {
-      userId: session.user.id,
-      actorUserId: session.user.id,
+      userId: token.sub,
+      actorUserId: token.sub,
       action: 'user_delete',
       dataType: 'deleted:' + targetUser.username,
       ip: getClientIp(request),

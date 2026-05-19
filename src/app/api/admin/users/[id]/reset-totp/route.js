@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../../../auth.js'
+import { getToken } from 'next-auth/jwt'
 import { prisma } from '../../../../../../lib/db.js'
 import { getClientIp, getUserAgent } from '../../../../../../lib/request-meta.js'
 
 export const runtime = 'nodejs'
 
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id || session.user.role !== 'admin' || session.user.totpVerified !== true) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token || token.role !== 'admin' || token.totpVerified !== true) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -29,7 +28,7 @@ export async function POST(request, { params }) {
   await prisma.securityAuditLog.create({
     data: {
       userId: id,
-      actorUserId: session.user.id,
+      actorUserId: token.sub,
       action: 'totp_reset',
       ip: getClientIp(request),
       userAgent: getUserAgent(request),
