@@ -15,6 +15,7 @@ export default function UsersTable({
   currentUserId,
   resetPwdUser,
   resetTotpUser,
+  togglingUser,
   onEdit,
   onResetPassword,
   onResetTotp,
@@ -115,20 +116,20 @@ export default function UsersTable({
                           {isTotpResetting ? '...' : 'Reset TOTP'}
                         </button>
                       )}
-                      {/* Toggle Active — disabled for self */}
+                      {/* Toggle Active — disabled for self or while toggling */}
                       <button
                         onClick={() => !isSelf && onToggleActive(user)}
-                        disabled={isSelf}
+                        disabled={isSelf || togglingUser === user.id}
                         title={isSelf ? 'Tidak dapat mengubah akun sendiri' : user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                         className={`px-2 py-1 rounded text-xs font-medium border ${
-                          isSelf
+                          isSelf || togglingUser === user.id
                             ? 'border-gray-200 text-gray-300 cursor-not-allowed'
                             : user.isActive
                             ? 'border-orange-300 text-orange-700 hover:bg-orange-50'
                             : 'border-green-300 text-green-700 hover:bg-green-50'
                         }`}
                       >
-                        {user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        {togglingUser === user.id ? '...' : user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                       </button>
                       {/* Delete — disabled for self */}
                       <button

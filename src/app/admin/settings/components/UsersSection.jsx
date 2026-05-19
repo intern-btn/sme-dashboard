@@ -22,6 +22,7 @@ export default function UsersSection() {
   const [resetPwdUser, setResetPwdUser] = useState(null) // user whose pwd to reset
   const [deleteUser, setDeleteUser] = useState(null)    // user to hard-delete
   const [resetTotpUser, setResetTotpUser] = useState(null) // user whose TOTP to reset
+  const [togglingUser, setTogglingUser] = useState(null) // user id being toggled
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -49,6 +50,7 @@ export default function UsersSection() {
 
   // Reset password action
   const handleResetPassword = async (user) => {
+    if (!confirm(`Reset password untuk ${user.username}? Password baru akan ditampilkan sekali.`)) return
     setResetPwdUser(user)
     const res = await fetch(`/api/admin/users/${user.id}/reset-password`, { method: 'POST' })
     const data = await res.json()
@@ -62,11 +64,8 @@ export default function UsersSection() {
 
   // Reset TOTP action
   const handleResetTotp = async (user) => {
+    if (!confirm(`Reset TOTP untuk ${user.username}? Mereka harus enroll ulang saat login berikutnya.`)) return
     setResetTotpUser(user)
-    if (!confirm(`Reset TOTP untuk ${user.username}? Mereka harus enroll ulang saat login berikutnya.`)) {
-      setResetTotpUser(null)
-      return
-    }
     const res = await fetch(`/api/admin/users/${user.id}/reset-totp`, { method: 'POST' })
     const data = await res.json()
     setResetTotpUser(null)
@@ -78,12 +77,14 @@ export default function UsersSection() {
   const handleToggleActive = async (user) => {
     const action = user.isActive ? 'menonaktifkan' : 'mengaktifkan'
     if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} akun ${user.username}?`)) return
+    setTogglingUser(user.id)
     const res = await fetch('/api/auth/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: user.id, isActive: !user.isActive }),
     })
     const data = await res.json()
+    setTogglingUser(null)
     if (!res.ok) { alert(data.error || `Gagal ${action}.`); return }
     fetchUsers()
   }
@@ -124,6 +125,7 @@ export default function UsersSection() {
           currentUserId={currentUserId}
           resetPwdUser={resetPwdUser}
           resetTotpUser={resetTotpUser}
+          togglingUser={togglingUser}
           onEdit={setEditUser}
           onResetPassword={handleResetPassword}
           onResetTotp={handleResetTotp}

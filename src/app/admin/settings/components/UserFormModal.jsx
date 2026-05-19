@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 const ROLES = ['viewer', 'editor', 'approver', 'admin']
 
@@ -17,17 +17,6 @@ export default function UserFormModal({ mode, user, currentUserId, onClose, onSa
   const [error, setError] = useState('')
 
   const isSelf = isEdit && user?.id === currentUserId
-
-  useEffect(() => {
-    if (user) {
-      setForm({
-        username: user.username,
-        displayName: user.displayName,
-        role: user.role,
-        kanwil: user.kanwil || '',
-      })
-    }
-  }, [user])
 
   const onSubmit = async (e) => {
     e.preventDefault()
