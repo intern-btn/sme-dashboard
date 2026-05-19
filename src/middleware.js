@@ -6,6 +6,7 @@ export async function middleware(req) {
 
   const isLoginPage = pathname === '/login'
   const isTotpPage = pathname === '/verify-otp'
+  const isChangePwdPage = pathname === '/change-password'
   const isAuthRoute = pathname.startsWith('/api/auth')
 
   if (isLoginPage || isAuthRoute) return NextResponse.next()
@@ -18,6 +19,14 @@ export async function middleware(req) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('callbackUrl', callbackUrl)
+    return NextResponse.redirect(url)
+  }
+
+  if (token.mustChangePassword === true) {
+    if (isChangePwdPage) return NextResponse.next()
+    const url = req.nextUrl.clone()
+    url.pathname = '/change-password'
+    url.search = ''
     return NextResponse.redirect(url)
   }
 
