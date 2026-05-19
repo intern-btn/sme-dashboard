@@ -20,23 +20,32 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
+  if (id === session.user.id) {
+    return NextResponse.json({ error: 'Tidak dapat mereset password akun sendiri' }, { status: 403 })
+  }
+
   const tempPassword = generateTempPassword()
   const passwordHash = await hashPassword(tempPassword)
 
-  await prisma.user.update({
-    where: { id },
-    data: { passwordHash, mustChangePassword: true },
-  })
+  try {
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash, mustChangePassword: true },
+    })
 
-  await prisma.securityAuditLog.create({
-    data: {
-      userId: id,
-      actorUserId: session.user.id,
-      action: 'user_password_reset',
-      ip: getClientIp(request),
-      userAgent: getUserAgent(request),
-    },
-  })
+    await prisma.securityAuditLog.create({
+      data: {
+        userId: id,
+        actorUserId: session.user.id,
+        action: 'user_password_reset',
+        ip: getClientIp(request),
+        userAgent: getUserAgent(request),
+      },
+    })
+  } catch (err) {
+    console.error('reset-password failed:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 
   return NextResponse.json({ tempPassword })
 }

@@ -21,6 +21,9 @@ export async function POST(request) {
   if (newPassword.length < 10) {
     return NextResponse.json({ error: 'Password baru minimal 10 karakter' }, { status: 400 })
   }
+  if (newPassword.length > 72) {
+    return NextResponse.json({ error: 'Password baru maksimal 72 karakter' }, { status: 400 })
+  }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
   if (!user || !user.isActive) {
@@ -29,7 +32,7 @@ export async function POST(request) {
 
   const currentValid = await verifyPassword(currentPassword, user.passwordHash)
   if (!currentValid) {
-    return NextResponse.json({ error: 'Password saat ini salah' }, { status: 400 })
+    return NextResponse.json({ error: 'Password saat ini salah' }, { status: 401 })
   }
 
   const sameAsOld = await verifyPassword(newPassword, user.passwordHash)
@@ -38,20 +41,27 @@ export async function POST(request) {
   }
 
   const passwordHash = await hashPassword(newPassword)
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash, mustChangePassword: false },
-  })
 
-  await prisma.securityAuditLog.create({
-    data: {
-      userId: user.id,
-      actorUserId: user.id,
-      action: 'user_password_change',
-      ip: getClientIp(request),
-      userAgent: getUserAgent(request),
-    },
-  })
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, mustChangePassword: false },
+    })
 
+    await prisma.securityAuditLog.create({
+      data: {
+        userId: user.id,
+        actorUserId: user.id,
+        action: 'user_password_change',
+        ip: getClientIp(request),
+        userAgent: getUserAgent(request),
+      },
+    })
+  } catch (err) {
+    console.error('change-password failed:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  // Caller must invoke session.update({ mustChangePassword: false }) to clear JWT flag
   return NextResponse.json({ ok: true })
 }
