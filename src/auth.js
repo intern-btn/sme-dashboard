@@ -22,7 +22,7 @@ export const authOptions = {
         const valid = await verifyPassword(password, user.passwordHash)
         if (!valid) return null
 
-        return { id: user.id, name: user.username, role: user.role }
+        return { id: user.id, name: user.username, role: user.role, mustChangePassword: user.mustChangePassword }
       },
     }),
     // Future: Microsoft Entra ID provider can be added here without rewriting consumers.
@@ -37,10 +37,14 @@ export const authOptions = {
         token.role = user.role
         token.name = user.name
         token.totpVerified = false
+        token.mustChangePassword = user.mustChangePassword === true
       }
 
       if (trigger === 'update' && session?.totpVerified === true) {
         token.totpVerified = true
+      }
+      if (trigger === 'update' && session?.mustChangePassword === false) {
+        token.mustChangePassword = false
       }
 
       return token
@@ -51,6 +55,7 @@ export const authOptions = {
         session.user.role = token.role
         session.user.name = token.name
         session.user.totpVerified = token.totpVerified === true
+        session.user.mustChangePassword = token.mustChangePassword === true
       }
       return session
     },
