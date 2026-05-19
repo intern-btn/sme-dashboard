@@ -42,7 +42,8 @@ export async function POST(request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { username, displayName, role, kanwil } = await request.json()
+  const body = await request.json().catch(() => ({}))
+  const { username, displayName, role, kanwil } = body
   if (!username || !displayName || !role) {
     return NextResponse.json({ error: 'username, displayName, role are required' }, { status: 400 })
   }
@@ -98,8 +99,16 @@ export async function PATCH(request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, displayName, role, kanwil, isActive } = await request.json()
+  const body = await request.json().catch(() => ({}))
+  const { id, displayName, role, kanwil, isActive } = body
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  if (role !== undefined) {
+    const validRoles = ['viewer', 'editor', 'approver', 'admin']
+    if (!validRoles.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    }
+  }
 
   // Self-demote guard
   if (id === session.user.id && role !== undefined && role !== session.user.role) {
@@ -119,6 +128,8 @@ export async function PATCH(request) {
   const isDeactivatingAdmin = targetUser.role === 'admin' && targetUser.isActive === true && isActive === false
 
   if (isDemotingAdmin || isDeactivatingAdmin) {
+    // Note: TOCTOU race possible on concurrent requests (safe for SQLite which serialises writes,
+    // but should use prisma.$transaction() if migrated to Postgres)
     const remaining = await prisma.user.count({
       where: { role: 'admin', isActive: true, id: { not: id } },
     })
@@ -173,7 +184,8 @@ export async function DELETE(request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, confirmUsername } = await request.json()
+  const body = await request.json().catch(() => ({}))
+  const { id, confirmUsername } = body
   if (!id || !confirmUsername) {
     return NextResponse.json({ error: 'id and confirmUsername are required' }, { status: 400 })
   }
@@ -186,7 +198,7 @@ export async function DELETE(request) {
   const targetUser = await prisma.user.findUnique({ where: { id } })
   if (!targetUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  if (confirmUsername !== targetUser.username) {
+  if (confirmUsername.trim() !== targetUser.username.trim()) {
     return NextResponse.json({ error: 'Username konfirmasi tidak cocok' }, { status: 400 })
   }
 
@@ -197,7 +209,7 @@ export async function DELETE(request) {
     })
     if (remaining === 0) {
       return NextResponse.json(
-        { error: 'Tidak dapat menonaktifkan atau mendemosi admin terakhir' },
+        { error: 'Tidak dapat menghapus admin terakhir yang aktif' },
         { status: 409 }
       )
     }
