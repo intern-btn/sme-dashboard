@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
-const ROLES = ['viewer', 'editor', 'approver', 'admin']
+const ROLES = [
+  { value: 'staff', label: 'Staff' },
+  { value: 'manager', label: 'Manajer' },
+  { value: 'admin', label: 'Admin' },
+]
 
 export default function UserFormModal({ mode, user, currentUserId, onClose, onSaved }) {
   const isEdit = mode === 'edit'
@@ -10,8 +14,7 @@ export default function UserFormModal({ mode, user, currentUserId, onClose, onSa
   const [form, setForm] = useState({
     username: user?.username || '',
     displayName: user?.displayName || '',
-    role: user?.role || 'viewer',
-    kanwil: user?.kanwil || '',
+    role: user?.role || 'staff',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -24,8 +27,8 @@ export default function UserFormModal({ mode, user, currentUserId, onClose, onSa
     setSubmitting(true)
 
     const body = isEdit
-      ? { id: user.id, displayName: form.displayName, role: form.role, kanwil: form.kanwil || null }
-      : { username: form.username, displayName: form.displayName, role: form.role, kanwil: form.kanwil || null }
+      ? { id: user.id, displayName: form.displayName, role: form.role }
+      : { username: form.username, displayName: form.displayName, role: form.role }
 
     const res = await fetch('/api/auth/users', {
       method: isEdit ? 'PATCH' : 'POST',
@@ -90,21 +93,11 @@ export default function UserFormModal({ mode, user, currentUserId, onClose, onSa
               disabled={isSelf}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
             >
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
             {isSelf && (
               <p className="text-xs text-gray-400 mt-1">Tidak dapat mengubah role akun sendiri.</p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kanwil <span className="text-gray-400 font-normal">(opsional)</span></label>
-            <input
-              value={form.kanwil}
-              onChange={(e) => setForm(f => ({ ...f, kanwil: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Kosongkan jika tidak ada"
-            />
           </div>
 
           {error && (

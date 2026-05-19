@@ -45,7 +45,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'username, displayName, role are required' }, { status: 400 })
   }
 
-  const validRoles = ['viewer', 'editor', 'approver', 'admin']
+  const validRoles = ['staff', 'manager', 'admin']
   if (!validRoles.includes(role)) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   }
@@ -101,7 +101,7 @@ export async function PATCH(request) {
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   if (role !== undefined) {
-    const validRoles = ['viewer', 'editor', 'approver', 'admin']
+    const validRoles = ['staff', 'manager', 'admin']
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }

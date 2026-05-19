@@ -5,9 +5,14 @@ import { Th, setSortBy } from '../../../components/SortableTableHeader'
 
 const ROLE_COLORS = {
   admin: 'bg-purple-100 text-purple-800',
-  approver: 'bg-blue-100 text-blue-800',
-  editor: 'bg-green-100 text-green-800',
-  viewer: 'bg-gray-100 text-gray-600',
+  manager: 'bg-blue-100 text-blue-800',
+  staff: 'bg-green-100 text-green-800',
+}
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  manager: 'Manajer',
+  staff: 'Staff',
 }
 
 export default function UsersTable({
@@ -46,7 +51,6 @@ export default function UsersTable({
               <Th label="Username" onSort={() => setSortBy(setSort, 'username')} />
               <Th label="Nama" onSort={() => setSortBy(setSort, 'displayName')} />
               <Th label="Role" onSort={() => setSortBy(setSort, 'role')} />
-              <Th label="Kanwil" onSort={() => setSortBy(setSort, 'kanwil')} />
               <Th label="Status" onSort={() => setSortBy(setSort, 'isActive')} />
               <Th label="TOTP" />
               <Th label="Dibuat" onSort={() => setSortBy(setSort, 'createdAt')} />
@@ -67,10 +71,9 @@ export default function UsersTable({
                   <td className="px-3 py-2 text-sm text-gray-700">{user.displayName}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-600'}`}>
-                      {user.role}
+                      {ROLE_LABELS[user.role] || user.role}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-sm text-gray-500">{user.kanwil || '—'}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {user.isActive ? 'Aktif' : 'Nonaktif'}
