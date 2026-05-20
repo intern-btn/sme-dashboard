@@ -1,30 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { getStorage } from './storage/index.js'
-import { normKey, normName, toKolNum } from './business-utils.js'
-
-export function computeMergeStats(parsedIdas, masterRows) {
-  const idasRows = Array.isArray(parsedIdas?.rows) ? parsedIdas.rows : []
-  const rows = Array.isArray(masterRows) ? masterRows : []
-  if (rows.length === 0) return null
-
-  const byRek = new Map()
-  const byNama = new Map()
-  for (const r of idasRows) {
-    const k = normKey(r?.noRekening)
-    if (k) byRek.set(k, r)
-    const n = normName(r?.nama)
-    if (n && !byNama.has(n)) byNama.set(n, r)
-  }
-
-  let found = 0
-  let totalBakiDebet = 0
-  for (const m of rows) {
-    const idas = byRek.get(normKey(m?.noDebitur)) || byNama.get(normName(m?.nama)) || null
-    if (idas) { found++; totalBakiDebet += idas.bakiDebet || 0 }
-  }
-  return { masterTotal: rows.length, idasFound: found, totalBakiDebet }
-}
+import { normKey, normName, toKolNum, computeMergeStats } from './business-utils.js'
 
 function buildTrendPoint(parsedIdas, idasDate) {
   const date = idasDate || new Date().toISOString().split('T')[0]

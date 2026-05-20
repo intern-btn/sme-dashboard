@@ -32,3 +32,26 @@ export function normName(s) { return String(s || '').trim().toLowerCase().replac
 
 export const CHECK = '✓'
 export const WARN = '⚠'
+
+export function computeMergeStats(parsedIdas, masterRows) {
+  const idasRows = Array.isArray(parsedIdas?.rows) ? parsedIdas.rows : []
+  const rows = Array.isArray(masterRows) ? masterRows : []
+  if (rows.length === 0) return null
+
+  const byRek = new Map()
+  const byNama = new Map()
+  for (const r of idasRows) {
+    const k = normKey(r?.noRekening)
+    if (k) byRek.set(k, r)
+    const n = normName(r?.nama)
+    if (n && !byNama.has(n)) byNama.set(n, r)
+  }
+
+  let found = 0
+  let totalBakiDebet = 0
+  for (const m of rows) {
+    const idas = byRek.get(normKey(m?.noDebitur)) || byNama.get(normName(m?.nama)) || null
+    if (idas) { found++; totalBakiDebet += idas.bakiDebet || 0 }
+  }
+  return { masterTotal: rows.length, idasFound: found, totalBakiDebet }
+}
