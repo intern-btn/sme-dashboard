@@ -24,11 +24,12 @@ export function getTotpAuthUrl({ username, secret }) {
 }
 
 export function verifyTotpCode({ code, secret }) {
-  return verifySync({
+  const result = verifySync({
     token: String(code || '').trim(),
     secret,
     epochTolerance: 1,
   })
+  return result.valid === true
 }
 
 export async function assertTotpNotRateLimited(userId, context) {
