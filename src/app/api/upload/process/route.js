@@ -65,7 +65,7 @@ export async function POST(request) {
       kol2: /^49b/i,
       realisasi: /^22a/i,
       realisasi_kredit: /^44a1/i,
-      posisi_kredit: /^44b/i
+      posisi_kredit: /^47\.\s*posisi/i
     }
 
     for (const sheetName of workbook.SheetNames) {

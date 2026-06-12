@@ -259,6 +259,9 @@ function RealisasiKreditContent({ data, metadata }) {
             Total Nasional Realisasi Kredit — {monthInfo.current.fullLabel}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StatCard label="Total Realisasi (Jt)" accent="#003d7a">
+              <div className="text-xl font-bold" style={{ color: '#003d7a' }}>Rp {f(totalNasional.umkm_real_current)}</div>
+            </StatCard>
             <StatCard label="KUMK (Jt)" accent="#003d7a">
               <div className="text-xl font-bold text-gray-900">Rp {f(totalNasional.kumk_real_current)}</div>
               <div className="text-xs text-gray-500 mt-0.5">1–{monthInfo.current?.day || 26} {monthInfo.current?.shortName || ''}</div>
@@ -266,9 +269,6 @@ function RealisasiKreditContent({ data, metadata }) {
             <StatCard label="KUR (Jt)" accent="#e84e0f">
               <div className="text-xl font-bold text-gray-900">Rp {f(totalNasional.kur_total_current)}</div>
               <div className="text-xs text-gray-500 mt-0.5">Total KUR</div>
-            </StatCard>
-            <StatCard label="Total Realisasi (Jt)" accent="#003d7a">
-              <div className="text-xl font-bold" style={{ color: '#003d7a' }}>Rp {f(totalNasional.umkm_real_current)}</div>
             </StatCard>
           </div>
         </div>
@@ -319,6 +319,7 @@ function PosisiKreditContent({ data, metadata }) {
 
   const { totalNasional, kanwilData, monthInfo: dataMonthInfo } = data
   const monthInfo = dataMonthInfo || metadata?.monthInfo || getMonthInfo()
+  const prevYearPositionLabel = getPrevYearPositionLabel(monthInfo)
   const f = (n) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(n || 0)
   const gapColor = (value) => value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-gray-500'
 
@@ -335,8 +336,8 @@ function PosisiKreditContent({ data, metadata }) {
             Total Nasional Posisi Kredit — {monthInfo.current.fullLabel}
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard label="Posisi Awal Jan" accent="#003d7a">
-              <div className="text-xl font-bold text-gray-900">Rp {f(totalNasional.posisi_jan)}</div>
+            <StatCard label={prevYearPositionLabel} accent="#003d7a">
+              <div className="text-xl font-bold text-gray-900">Rp {f(totalNasional.posisi_prev_year)}</div>
             </StatCard>
             <StatCard label="Posisi Current" accent="#003d7a">
               <div className="text-xl font-bold" style={{ color: '#003d7a' }}>Rp {f(totalNasional.posisi_current)}</div>
@@ -363,7 +364,7 @@ function PosisiKreditContent({ data, metadata }) {
                 <tr>
                   <th className="py-3 px-4 text-left font-semibold">No</th>
                   <th className="py-3 px-4 text-left font-semibold">Kanwil</th>
-                  <th className="py-3 px-4 text-right font-semibold">Posisi Awal Jan (Jt)</th>
+                  <th className="py-3 px-4 text-right font-semibold">{prevYearPositionLabel} (Jt)</th>
                   <th className="py-3 px-4 text-right font-semibold">Realisasi (Jt)</th>
                   <th className="py-3 px-4 text-right font-semibold">Run Off (Jt)</th>
                   <th className="py-3 px-4 text-right font-semibold">Posisi Current (Jt)</th>
@@ -376,7 +377,7 @@ function PosisiKreditContent({ data, metadata }) {
                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-gray-500">{i + 1}</td>
                     <td className="py-3 px-4 font-medium">{k.name}</td>
-                    <td className="py-3 px-4 text-right">{f(k.posisi_jan)}</td>
+                    <td className="py-3 px-4 text-right">{f(k.posisi_prev_year)}</td>
                     <td className="py-3 px-4 text-right">{f(k.realisasi)}</td>
                     <td className="py-3 px-4 text-right">{f(k.runoff)}</td>
                     <td className="py-3 px-4 text-right font-semibold" style={{ color: '#003d7a' }}>{f(k.posisi_current)}</td>
@@ -394,6 +395,13 @@ function PosisiKreditContent({ data, metadata }) {
 }
 
 // ── Shared ───────────────────────────────────────────────────────────────────
+
+function getPrevYearPositionLabel(monthInfo) {
+  const current = monthInfo?.current || {}
+  const monthLabel = current.shortName || current.name || 'Current'
+  const prevYear = current.year ? current.year - 1 : new Date().getFullYear() - 1
+  return `Posisi ${monthLabel} ${prevYear}`
+}
 
 function StatCard({ label, accent = '#003d7a', children }) {
   return (

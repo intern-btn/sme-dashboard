@@ -709,7 +709,7 @@ export default function AdminPage() {
                       <div className="mt-2 text-sm text-green-700">
                         <p>IDAS Date: {spbuStats.idasDate}</p>
                         {spbuStats.stats?.masterTotal != null && (
-                          <p>Ditemukan di IDAS: {spbuStats.stats.idasFound} / {spbuStats.stats.masterTotal} debitur</p>
+                          <p>Debitur Aktif: {spbuStats.stats.idasFound} / {spbuStats.stats.masterTotal} debitur</p>
                         )}
                         <p>Total Baki Debet: Rp {new Intl.NumberFormat('id-ID').format(spbuStats.stats?.totalBakiDebet || 0)}</p>
                       </div>
@@ -807,7 +807,7 @@ export default function AdminPage() {
                       <div className="mt-2 text-sm text-green-700">
                         <p>IDAS Date: {bpjsStats.idasDate}</p>
                         {bpjsStats.stats?.masterTotal != null && (
-                          <p>Ditemukan di IDAS: {bpjsStats.stats.idasFound} / {bpjsStats.stats.masterTotal} debitur</p>
+                          <p>Debitur Aktif: {bpjsStats.stats.idasFound} / {bpjsStats.stats.masterTotal} debitur</p>
                         )}
                         <p>Total Baki Debet: Rp {new Intl.NumberFormat('id-ID').format(bpjsStats.stats?.totalBakiDebet || 0)}</p>
                       </div>
@@ -905,7 +905,7 @@ export default function AdminPage() {
                       <div className="mt-2 text-sm text-green-700">
                         <p>IDAS Date: {indomaretStats.idasDate}</p>
                         {indomaretStats.stats?.masterTotal != null && (
-                          <p>Ditemukan di IDAS: {indomaretStats.stats.idasFound} / {indomaretStats.stats.masterTotal} debitur</p>
+                          <p>Debitur Aktif: {indomaretStats.stats.idasFound} / {indomaretStats.stats.masterTotal} debitur</p>
                         )}
                         <p>Total Baki Debet: Rp {new Intl.NumberFormat('id-ID').format(indomaretStats.stats?.totalBakiDebet || 0)}</p>
                       </div>

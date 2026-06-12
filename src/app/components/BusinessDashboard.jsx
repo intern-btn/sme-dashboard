@@ -31,13 +31,13 @@ export default function BusinessDashboard({ trend, mergedRows }) {
   const kolPie = Object.entries(kolDist).map(([name, value]) => ({ name, value }))
 
   const points = Array.isArray(trend?.points) ? trend.points : []
-  const coverageText = `${foundCount}/${totalDebitur} akun ditemukan di IDAS hari ini`
+  const coverageText = `${foundCount}/${totalDebitur} Debitur Aktif`
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard title="Total Debitur" value={totalDebitur} />
-        <MetricCard title="Ditemukan di IDAS" value={foundCount} />
+        <MetricCard title="Debitur Aktif" value={foundCount} />
         <MetricCard title="Closed" value={closedCount} warn />
         <MetricCard title="Total Pencairan (AMTREL)" value={formatRp(totalAmtrel)} accent />
         <MetricCard title="Total Baki Debet (IDAS)" value={formatRp(totalBakiDebet)} accent />

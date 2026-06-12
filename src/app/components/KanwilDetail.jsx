@@ -336,6 +336,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
   }
 
   const monthInfo = data.monthInfo || metadata?.monthInfo || getMonthInfo()
+  const prevYearPositionLabel = getPrevYearPositionLabel(monthInfo)
   const kanwilSummary = data.kanwilData.find(k => k.name === kanwilName) || {}
   const cabangList = data.cabangData.filter(c => c.kanwil === kanwilName)
   const sortedCabang = [...cabangList].sort((a, b) => (b.posisi_current || 0) - (a.posisi_current || 0))
@@ -353,8 +354,8 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
       <div className="mb-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary Posisi Kredit</p>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard label="Posisi Awal Jan" accent="#003d7a">
-            <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.posisi_jan)}</div>
+          <StatCard label={prevYearPositionLabel} accent="#003d7a">
+            <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.posisi_prev_year)}</div>
           </StatCard>
           <StatCard label="Realisasi" accent="#003d7a">
             <div className="text-lg font-bold text-gray-900">Rp {f(kanwilSummary.realisasi)}</div>
@@ -382,7 +383,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
               <tr>
                 <th className="py-3 px-4 text-left font-semibold">No</th>
                 <th className="py-3 px-4 text-left font-semibold">Cabang</th>
-                <th className="py-3 px-4 text-right font-semibold">Posisi Awal (Jt)</th>
+                <th className="py-3 px-4 text-right font-semibold">{prevYearPositionLabel} (Jt)</th>
                 <th className="py-3 px-4 text-right font-semibold">Posisi Current (Jt)</th>
                 <th className="py-3 px-4 text-right font-semibold">Gap MTD (Jt)</th>
                 <th className="py-3 px-4 text-right font-semibold">Gap YoY (Jt)</th>
@@ -393,7 +394,7 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
                 <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="py-3 px-4 text-gray-500">{i + 1}</td>
                   <td className="py-3 px-4 font-medium">{c.name}</td>
-                  <td className="py-3 px-4 text-right">{f(c.posisi_jan)}</td>
+                  <td className="py-3 px-4 text-right">{f(c.posisi_prev_year)}</td>
                   <td className="py-3 px-4 text-right font-semibold">{f(c.posisi_current)}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_mtd || 0)}`}>{f(c.gap_mtd)}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${gapColor(c.gap_yoy || 0)}`}>{f(c.gap_yoy)}</td>
@@ -408,6 +409,13 @@ function PosisiKreditKanwilContent({ data, metadata, kanwilName }) {
 }
 
 // ── Shared ───────────────────────────────────────────────────────────────────
+
+function getPrevYearPositionLabel(monthInfo) {
+  const current = monthInfo?.current || {}
+  const monthLabel = current.shortName || current.name || 'Current'
+  const prevYear = current.year ? current.year - 1 : new Date().getFullYear() - 1
+  return `Posisi ${monthLabel} ${prevYear}`
+}
 
 function StatCard({ label, accent = '#003d7a', children }) {
   return (

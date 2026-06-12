@@ -66,6 +66,57 @@ export function parseMonthFromHeader(headerText) {
   return null
 }
 
+const namedMonthIndexMap = {
+  jan: 0,
+  januari: 0,
+  feb: 1,
+  februari: 1,
+  mar: 2,
+  maret: 2,
+  apr: 3,
+  april: 3,
+  mei: 4,
+  may: 4,
+  jun: 5,
+  juni: 5,
+  jul: 6,
+  juli: 6,
+  agu: 7,
+  aug: 7,
+  agustus: 7,
+  sep: 8,
+  september: 8,
+  okt: 9,
+  oct: 9,
+  oktober: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  des: 11,
+  dec: 11,
+  desember: 11,
+  december: 11
+}
+
+function parsePeriodMonthHeader(headerText) {
+  const match = String(headerText || '').toLowerCase().match(/periode\s+([a-z]+)\s+(\d{4})/)
+  if (!match || namedMonthIndexMap[match[1]] === undefined) return null
+
+  const month = namedMonthIndexMap[match[1]]
+  const year = parseInt(match[2], 10)
+  const day = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+
+  return {
+    day,
+    month,
+    year,
+    name: getMonthName(month),
+    shortName: getMonthShortName(month),
+    fullLabel: `${getMonthName(month)} ${year}`,
+    shortLabel: `${getMonthShortName(month)} ${year}`
+  }
+}
+
 // ============================================
 // EXCEL PARSERS
 // ============================================
@@ -302,6 +353,84 @@ export function parseRealisasiExcel(workbook) {
   console.log('Previous month:', previousMonth ? `${previousMonth.name} ${previousMonth.year} (month=${previousMonth.month}, startCol=${previousMonth.startCol})` : 'None')
   console.log('Current month:', currentMonth ? `${currentMonth.name} ${currentMonth.year} (month=${currentMonth.month}, startCol=${currentMonth.startCol})` : 'None')
 
+  const normalizeHeaderLabel = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const subLabelRow = data
+    .slice(0, 4)
+    .find((row) => {
+      if (!Array.isArray(row)) return false
+      const labels = row.map(normalizeHeaderLabel)
+      return labels.some((label) => /\bkur\b/.test(label)) && labels.some((label) => /\btotal\b/.test(label))
+    }) || []
+
+  const getMonthEndCol = (month) => {
+    if (!month) return 0
+    const monthIndex = monthColumns.findIndex((candidate) => candidate.startCol === month.startCol)
+    const nextMonth = monthIndex !== -1 ? monthColumns[monthIndex + 1] : null
+    return nextMonth ? nextMonth.startCol : Math.max(subLabelRow.length, month.startCol + 7)
+  }
+
+  const getMonthLayout = (month) => {
+    if (!month) {
+      return {
+        hasKPP: false,
+        kppSupplyOffset: null,
+        kppDemandOffset: null,
+        totalOffset: 4
+      }
+    }
+
+    const startCol = month.startCol
+    const endCol = getMonthEndCol(month)
+    let hasKPP = false
+    let kppSupplyOffset = null
+    let kppDemandOffset = null
+    let totalOffset = null
+    let hasAnyLabels = false
+
+    for (let col = startCol; col < endCol; col++) {
+      const label = normalizeHeaderLabel(subLabelRow[col])
+      if (!label) continue
+      hasAnyLabels = true
+
+      if (/\bkpp\b/.test(label)) {
+        hasKPP = true
+        if (/supply/.test(label)) kppSupplyOffset = col - startCol
+        if (/demand/.test(label)) kppDemandOffset = col - startCol
+      }
+
+      if (/\btotal\b/.test(label)) {
+        totalOffset = col - startCol
+      }
+    }
+
+    const detectedWidth = endCol - startCol
+    if (!hasKPP && !hasAnyLabels && detectedWidth === 7) {
+      hasKPP = true
+    }
+
+    if (hasKPP) {
+      if (kppSupplyOffset === null) kppSupplyOffset = 4
+      if (kppDemandOffset === null) kppDemandOffset = 5
+      if (totalOffset === null) totalOffset = 6
+    } else if (totalOffset === null) {
+      totalOffset = 4
+    }
+
+    return {
+      hasKPP,
+      kppSupplyOffset,
+      kppDemandOffset,
+      totalOffset
+    }
+  }
+
+  const previousMonthLayout = getMonthLayout(previousMonth)
+  const currentMonthLayout = getMonthLayout(currentMonth)
+
+  console.log('Sub-label row detected:', subLabelRow.length > 0)
+  console.log('Previous month layout:', previousMonthLayout)
+  console.log('Current month layout:', currentMonthLayout)
+
   const dailyData = []
   const monthlyTotals = { previous: 0, current: 0 }
 
@@ -322,19 +451,9 @@ export function parseRealisasiExcel(workbook) {
         prevKumk = parseNumber(row[prevStart + 1])
         prevSmeSwadana = parseNumber(row[prevStart + 2])
         prevKumkLainnya = parseNumber(row[prevStart + 3])
-
-        // Check if this month has KPP columns (October 2025 onwards)
-        const monthHasKPP = (previousMonth.year > 2025) || (previousMonth.year === 2025 && previousMonth.month >= 9)
-
-        if (monthHasKPP) {
-          prevKppSupply = parseNumber(row[prevStart + 4])
-          prevKppDemand = parseNumber(row[prevStart + 5])
-          prevTotal = parseNumber(row[prevStart + 6])
-        } else {
-          prevKppSupply = 0
-          prevKppDemand = 0
-          prevTotal = parseNumber(row[prevStart + 4])
-        }
+        prevKppSupply = previousMonthLayout.hasKPP ? parseNumber(row[prevStart + previousMonthLayout.kppSupplyOffset]) : 0
+        prevKppDemand = previousMonthLayout.hasKPP ? parseNumber(row[prevStart + previousMonthLayout.kppDemandOffset]) : 0
+        prevTotal = parseNumber(row[prevStart + previousMonthLayout.totalOffset])
       }
 
       let currKur = 0, currKumk = 0, currSmeSwadana = 0, currKumkLainnya = 0
@@ -345,19 +464,9 @@ export function parseRealisasiExcel(workbook) {
         currKumk = parseNumber(row[currStart + 1])
         currSmeSwadana = parseNumber(row[currStart + 2])
         currKumkLainnya = parseNumber(row[currStart + 3])
-
-        // Check if this month has KPP columns (October 2025 onwards)
-        const monthHasKPP = (currentMonth.year > 2025) || (currentMonth.year === 2025 && currentMonth.month >= 9)
-
-        if (monthHasKPP) {
-          currKppSupply = parseNumber(row[currStart + 4])
-          currKppDemand = parseNumber(row[currStart + 5])
-          currTotal = parseNumber(row[currStart + 6])
-        } else {
-          currKppSupply = 0
-          currKppDemand = 0
-          currTotal = parseNumber(row[currStart + 4])
-        }
+        currKppSupply = currentMonthLayout.hasKPP ? parseNumber(row[currStart + currentMonthLayout.kppSupplyOffset]) : 0
+        currKppDemand = currentMonthLayout.hasKPP ? parseNumber(row[currStart + currentMonthLayout.kppDemandOffset]) : 0
+        currTotal = parseNumber(row[currStart + currentMonthLayout.totalOffset])
       }
 
       dailyData.push({
@@ -438,6 +547,85 @@ export function parseRealisasiKreditExcel(workbook) {
     }
   }
 
+  const namedMonthMap = {
+    jan: 0,
+    januari: 0,
+    feb: 1,
+    februari: 1,
+    mar: 2,
+    maret: 2,
+    apr: 3,
+    april: 3,
+    mei: 4,
+    may: 4,
+    jun: 5,
+    juni: 5,
+    jul: 6,
+    juli: 6,
+    agu: 7,
+    aug: 7,
+    agustus: 7,
+    sep: 8,
+    september: 8,
+    okt: 9,
+    oct: 9,
+    oktober: 9,
+    october: 9,
+    nov: 10,
+    november: 10,
+    des: 11,
+    dec: 11,
+    desember: 11,
+    december: 11
+  }
+  const periodHeader = data
+    .slice(0, 10)
+    .flat()
+    .map((cell) => String(cell || '').trim())
+    .find((cell) => /^periode\s+/i.test(cell))
+  const periodMatch = periodHeader?.toLowerCase().match(/periode\s+([a-z]+)\s+(\d{4})/)
+
+  if (periodMatch && namedMonthMap[periodMatch[1]] !== undefined) {
+    const periodMonth = namedMonthMap[periodMatch[1]]
+    const periodYear = parseInt(periodMatch[2], 10)
+    const currentPeriodLabel = data
+      .slice(0, 10)
+      .flat()
+      .map((cell) => String(cell || ''))
+      .find((cell) => {
+        const label = cell.toLowerCase()
+        const parsed = parseMonthFromHeader(label)
+        return parsed &&
+          parsed.month === periodMonth &&
+          parsed.year === periodYear &&
+          /\d{1,2}\s*-\s*\d{1,2}/.test(label) &&
+          !/\bsd\b/.test(label) &&
+          !/gap/.test(label)
+      })
+    const currentPeriodInfo = parseMonthFromHeader(currentPeriodLabel)
+    const previousPeriodDate = new Date(Date.UTC(periodYear, periodMonth - 1, 1))
+
+    currentMonth = {
+      day: currentPeriodInfo?.day || new Date(Date.UTC(periodYear, periodMonth + 1, 0)).getUTCDate(),
+      month: periodMonth,
+      year: periodYear,
+      name: getMonthName(periodMonth),
+      shortName: getMonthShortName(periodMonth),
+      fullLabel: `${getMonthName(periodMonth)} ${periodYear}`,
+      shortLabel: `${getMonthShortName(periodMonth)} ${periodYear}`
+    }
+
+    previousMonth = {
+      day: new Date(Date.UTC(previousPeriodDate.getUTCFullYear(), previousPeriodDate.getUTCMonth() + 1, 0)).getUTCDate(),
+      month: previousPeriodDate.getUTCMonth(),
+      year: previousPeriodDate.getUTCFullYear(),
+      name: getMonthName(previousPeriodDate.getUTCMonth()),
+      shortName: getMonthShortName(previousPeriodDate.getUTCMonth()),
+      fullLabel: `${getMonthName(previousPeriodDate.getUTCMonth())} ${previousPeriodDate.getUTCFullYear()}`,
+      shortLabel: `${getMonthShortName(previousPeriodDate.getUTCMonth())} ${previousPeriodDate.getUTCFullYear()}`
+    }
+  }
+
   // Fallback if months not found
   if (!currentMonth) {
     const now = new Date()
@@ -466,6 +654,100 @@ export function parseRealisasiKreditExcel(workbook) {
     }
   }
 
+  const normalizeHeaderText = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const sheetRange = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1')
+  const merges = sheet['!merges'] || []
+  const getRawCellValue = (rowIndex, colIndex) => data[rowIndex]?.[colIndex] ?? ''
+  const getMergedCellValue = (rowIndex, colIndex) => {
+    const directValue = getRawCellValue(rowIndex, colIndex)
+    if (directValue !== '' && directValue != null) return directValue
+
+    const merge = merges.find((range) =>
+      rowIndex >= range.s.r &&
+      rowIndex <= range.e.r &&
+      colIndex >= range.s.c &&
+      colIndex <= range.e.c
+    )
+
+    return merge ? getRawCellValue(merge.s.r, merge.s.c) : ''
+  }
+
+  const headerRowIndex = data
+    .slice(0, 10)
+    .findIndex((row) => {
+      if (!Array.isArray(row)) return false
+      const labels = row.map(normalizeHeaderText)
+      return labels.some((label) => label.includes('kantor cabang')) &&
+        labels.some((label) => label.includes('wilayah'))
+    })
+
+  if (headerRowIndex === -1) {
+    throw new Error(`Unable to locate 44a1 header row in sheet "${sheetName}"`)
+  }
+
+  const periodRowIndex = headerRowIndex + 1
+  const monthAliases = [
+    ['jan', 'januari'],
+    ['feb', 'februari'],
+    ['mar', 'maret'],
+    ['apr', 'april'],
+    ['mei', 'may'],
+    ['jun', 'juni'],
+    ['jul', 'juli'],
+    ['agu', 'aug', 'agustus'],
+    ['sep', 'september'],
+    ['okt', 'oct', 'oktober', 'october'],
+    ['nov', 'november'],
+    ['des', 'dec', 'desember', 'december']
+  ]
+  const currentMonthAliases = monthAliases[currentMonth.month] || [currentMonth.shortName?.toLowerCase()].filter(Boolean)
+  const currentYearShort = String(currentMonth.year).slice(-2)
+  const currentYearFull = String(currentMonth.year)
+  const isCurrentPeriodLabel = (value) => {
+    const label = normalizeHeaderText(value)
+    if (!label || /\bsd\b/.test(label)) return false
+    if (!/\d{1,2}\s*-\s*\d{1,2}/.test(label)) return false
+    const hasCurrentMonth = currentMonthAliases.some((alias) => label.includes(alias))
+    const hasCurrentYear = label.includes(`'${currentYearShort}`) || label.includes(currentYearFull)
+    return hasCurrentMonth && hasCurrentYear
+  }
+
+  const findColumnByHeader = ({ name, headerMatcher }) => {
+    for (let col = 0; col <= sheetRange.e.c; col++) {
+      const headerLabel = normalizeHeaderText(getMergedCellValue(headerRowIndex, col))
+      const periodLabel = getMergedCellValue(periodRowIndex, col)
+
+      if (headerMatcher(headerLabel) && isCurrentPeriodLabel(periodLabel)) {
+        return col
+      }
+    }
+
+    throw new Error(`Unable to locate 44a1 column "${name}" for ${currentMonth.fullLabel}`)
+  }
+
+  const valueColumns = {
+    kumk_real_current: findColumnByHeader({
+      name: 'kumk_real_current',
+      headerMatcher: (label) => label.includes('real kumk')
+    }),
+    kur_total_current: findColumnByHeader({
+      name: 'kur_total_current',
+      headerMatcher: (label) => label.includes('total kur')
+    }),
+    umkm_real_current: findColumnByHeader({
+      name: 'umkm_real_current',
+      headerMatcher: (label) => label.includes('real umkm')
+    })
+  }
+
+  console.log('44a1 resolved columns:', valueColumns)
+
+  const extractCurrentValues = (row) => ({
+    kumk_real_current: parseNumber(row[valueColumns.kumk_real_current]),
+    kur_total_current: parseNumber(row[valueColumns.kur_total_current]),
+    umkm_real_current: parseNumber(row[valueColumns.umkm_real_current])
+  })
+
   const kanwilData = []
   const cabangData = []
   let totalNasional = null
@@ -477,7 +759,7 @@ export function parseRealisasiKreditExcel(workbook) {
     'Jatim Bali': 'Jabanus'
   }
 
-  const dataStartRow = 4
+  const dataStartRow = headerRowIndex + 2
 
   for (let i = dataStartRow; i < data.length; i++) {
     const row = data[i]
@@ -497,46 +779,7 @@ export function parseRealisasiKreditExcel(workbook) {
     // Handle TOTAL row in kanwil section
     if (inKanwilSection && col2.toLowerCase() === 'total') {
       if (!totalNasional) {
-        totalNasional = {
-          kumk_real_prev_full: parseNumber(row[4]),
-          kumk_real_prev_mtd: parseNumber(row[5]),
-          kumk_komitmen: parseNumber(row[6]),
-          kumk_rkap: parseNumber(row[7]),
-          kumk_real_current: parseNumber(row[8]),
-          kumk_real_current_mtd: parseNumber(row[9]),
-          kumk_pcp_komit: parseNumber(row[10]) * 100,
-          kumk_pcp_rkap: parseNumber(row[11]) * 100,
-          kumk_gap_komit: parseNumber(row[12]),
-          kumk_gap_rkap: parseNumber(row[13]),
-          kumk_gap_prev: parseNumber(row[14]),
-          kumk_gap_prev_pct: parseNumber(row[15]) * 100,
-          kur_real_prev_full: parseNumber(row[17]),
-          kur_real_prev_mtd: parseNumber(row[18]),
-          kur_komitmen: parseNumber(row[21]),
-          kur_rkap: parseNumber(row[22]),
-          kur_real_current: parseNumber(row[23]),
-          kur_kpp_demand: parseNumber(row[24]),
-          kur_kpp_supply: parseNumber(row[25]),
-          kur_total_current: parseNumber(row[27]),
-          kur_pcp_komit: parseNumber(row[29]) * 100,
-          kur_pcp_rkap: parseNumber(row[30]) * 100,
-          kur_gap_komit: parseNumber(row[31]),
-          kur_gap_rkap: parseNumber(row[32]),
-          kur_gap_prev: parseNumber(row[33]),
-          kur_gap_prev_pct: parseNumber(row[34]) * 100,
-          umkm_real_prev_full: parseNumber(row[36]),
-          umkm_real_prev_mtd: parseNumber(row[37]),
-          umkm_komitmen: parseNumber(row[38]),
-          umkm_rkap: parseNumber(row[39]),
-          umkm_real_current: parseNumber(row[40]),
-          umkm_real_current_mtd: parseNumber(row[41]),
-          umkm_pcp_komit: parseNumber(row[42]) * 100,
-          umkm_pcp_rkap: parseNumber(row[43]) * 100,
-          umkm_gap_komit: parseNumber(row[44]),
-          umkm_gap_rkap: parseNumber(row[45]),
-          umkm_gap_prev: parseNumber(row[46]),
-          umkm_gap_prev_pct: parseNumber(row[47]) * 100
-        }
+        totalNasional = extractCurrentValues(row)
       }
       inKanwilSection = false
       continue
@@ -551,93 +794,14 @@ export function parseRealisasiKreditExcel(workbook) {
       }
       kanwilData.push({
         name: kanwilName,
-        // KUMK section
-        kumk_real_prev_full: parseNumber(row[4]),
-        kumk_real_prev_mtd: parseNumber(row[5]),
-        kumk_komitmen: parseNumber(row[6]),
-        kumk_rkap: parseNumber(row[7]),
-        kumk_real_current: parseNumber(row[8]),
-        kumk_real_current_mtd: parseNumber(row[9]),
-        kumk_pcp_komit: parseNumber(row[10]) * 100,
-        kumk_pcp_rkap: parseNumber(row[11]) * 100,
-        kumk_gap_komit: parseNumber(row[12]),
-        kumk_gap_rkap: parseNumber(row[13]),
-        kumk_gap_prev: parseNumber(row[14]),
-        kumk_gap_prev_pct: parseNumber(row[15]) * 100,
-        // KUR section
-        kur_real_prev_full: parseNumber(row[17]),
-        kur_real_prev_mtd: parseNumber(row[18]),
-        kur_komitmen: parseNumber(row[21]),
-        kur_rkap: parseNumber(row[22]),
-        kur_real_current: parseNumber(row[23]),
-        kur_kpp_demand: parseNumber(row[24]),
-        kur_kpp_supply: parseNumber(row[25]),
-        kur_total_current: parseNumber(row[27]),
-        kur_pcp_komit: parseNumber(row[29]) * 100,
-        kur_pcp_rkap: parseNumber(row[30]) * 100,
-        kur_gap_komit: parseNumber(row[31]),
-        kur_gap_rkap: parseNumber(row[32]),
-        kur_gap_prev: parseNumber(row[33]),
-        kur_gap_prev_pct: parseNumber(row[34]) * 100,
-        // UMKM Total
-        umkm_real_prev_full: parseNumber(row[36]),
-        umkm_real_prev_mtd: parseNumber(row[37]),
-        umkm_komitmen: parseNumber(row[38]),
-        umkm_rkap: parseNumber(row[39]),
-        umkm_real_current: parseNumber(row[40]),
-        umkm_real_current_mtd: parseNumber(row[41]),
-        umkm_pcp_komit: parseNumber(row[42]) * 100,
-        umkm_pcp_rkap: parseNumber(row[43]) * 100,
-        umkm_gap_komit: parseNumber(row[44]),
-        umkm_gap_rkap: parseNumber(row[45]),
-        umkm_gap_prev: parseNumber(row[46]),
-        umkm_gap_prev_pct: parseNumber(row[47]) * 100
+        ...extractCurrentValues(row)
       })
       continue
     }
 
     // Total Nasional (could be in col2 or at end of kanwil section)
     if (col2.toLowerCase().includes('total nasional')) {
-      totalNasional = {
-        kumk_real_prev_full: parseNumber(row[4]),
-        kumk_real_prev_mtd: parseNumber(row[5]),
-        kumk_komitmen: parseNumber(row[6]),
-        kumk_rkap: parseNumber(row[7]),
-        kumk_real_current: parseNumber(row[8]),
-        kumk_real_current_mtd: parseNumber(row[9]),
-        kumk_pcp_komit: parseNumber(row[10]) * 100,
-        kumk_pcp_rkap: parseNumber(row[11]) * 100,
-        kumk_gap_komit: parseNumber(row[12]),
-        kumk_gap_rkap: parseNumber(row[13]),
-        kumk_gap_prev: parseNumber(row[14]),
-        kumk_gap_prev_pct: parseNumber(row[15]) * 100,
-        kur_real_prev_full: parseNumber(row[17]),
-        kur_real_prev_mtd: parseNumber(row[18]),
-        kur_komitmen: parseNumber(row[21]),
-        kur_rkap: parseNumber(row[22]),
-        kur_real_current: parseNumber(row[23]),
-        kur_kpp_demand: parseNumber(row[24]),
-        kur_kpp_supply: parseNumber(row[25]),
-        kur_total_current: parseNumber(row[27]),
-        kur_pcp_komit: parseNumber(row[29]) * 100,
-        kur_pcp_rkap: parseNumber(row[30]) * 100,
-        kur_gap_komit: parseNumber(row[31]),
-        kur_gap_rkap: parseNumber(row[32]),
-        kur_gap_prev: parseNumber(row[33]),
-        kur_gap_prev_pct: parseNumber(row[34]) * 100,
-        umkm_real_prev_full: parseNumber(row[36]),
-        umkm_real_prev_mtd: parseNumber(row[37]),
-        umkm_komitmen: parseNumber(row[38]),
-        umkm_rkap: parseNumber(row[39]),
-        umkm_real_current: parseNumber(row[40]),
-        umkm_real_current_mtd: parseNumber(row[41]),
-        umkm_pcp_komit: parseNumber(row[42]) * 100,
-        umkm_pcp_rkap: parseNumber(row[43]) * 100,
-        umkm_gap_komit: parseNumber(row[44]),
-        umkm_gap_rkap: parseNumber(row[45]),
-        umkm_gap_prev: parseNumber(row[46]),
-        umkm_gap_prev_pct: parseNumber(row[47]) * 100
-      }
+      totalNasional = extractCurrentValues(row)
       continue
     }
 
@@ -651,14 +815,7 @@ export function parseRealisasiKreditExcel(workbook) {
       cabangData.push({
         name: col2,
         kanwil: kanwilName,
-        // Correct column mapping based on actual Excel structure
-        kumk_real_current: parseNumber(row[8]),      // Real KUMK 1-26 Jan'26
-        kur_total_current: parseNumber(row[27]),     // Total KUR 1-26 Jan'26
-        umkm_real_current: parseNumber(row[40]),     // Real UMKM 1-26 Jan'26
-        // Gaps
-        kumk_gap_prev: parseNumber(row[14]),
-        kur_gap_prev: parseNumber(row[33]),
-        umkm_gap_prev: parseNumber(row[43])
+        ...extractCurrentValues(row)
       })
     }
   }
@@ -667,7 +824,7 @@ export function parseRealisasiKreditExcel(workbook) {
     // Calculate total if missing
     totalNasional = {
       kumk_real_current: kanwilData.reduce((sum, k) => sum + (k.kumk_real_current || 0), 0),
-      kur_real_current: kanwilData.reduce((sum, k) => sum + (k.kur_real_current || 0), 0),
+      kur_total_current: kanwilData.reduce((sum, k) => sum + (k.kur_total_current || 0), 0),
       umkm_real_current: kanwilData.reduce((sum, k) => sum + (k.umkm_real_current || 0), 0)
     }
   }
@@ -710,6 +867,27 @@ export function parsePosisiKreditExcel(workbook) {
     }
   }
 
+  const periodMonthInfo = data
+    .slice(0, 10)
+    .flat()
+    .map(parsePeriodMonthHeader)
+    .find(Boolean)
+
+  if (periodMonthInfo) {
+    currentMonth = periodMonthInfo
+
+    const prevDate = new Date(Date.UTC(periodMonthInfo.year, periodMonthInfo.month - 1, 1))
+    previousMonth = {
+      day: new Date(Date.UTC(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + 1, 0)).getUTCDate(),
+      month: prevDate.getUTCMonth(),
+      year: prevDate.getUTCFullYear(),
+      name: getMonthName(prevDate.getUTCMonth()),
+      shortName: getMonthShortName(prevDate.getUTCMonth()),
+      fullLabel: `${getMonthName(prevDate.getUTCMonth())} ${prevDate.getUTCFullYear()}`,
+      shortLabel: `${getMonthShortName(prevDate.getUTCMonth())} ${prevDate.getUTCFullYear()}`
+    }
+  }
+
   // Fallback if months not found
   if (!currentMonth) {
     const now = new Date()
@@ -719,7 +897,7 @@ export function parsePosisiKreditExcel(workbook) {
       year: now.getFullYear(),
       name: getMonthName(now.getMonth()),
       shortName: getMonthShortName(now.getMonth()),
-      fullLabel: `${getMonthName(now.getFullYear())} ${now.getFullYear()}`,
+      fullLabel: `${getMonthName(now.getMonth())} ${now.getFullYear()}`,
       shortLabel: `${getMonthShortName(now.getMonth())} ${now.getFullYear()}`
     }
   }
@@ -773,7 +951,7 @@ export function parsePosisiKreditExcel(workbook) {
       // Skip "Total" row
       if (col1.toLowerCase() === 'total') {
         totalNasional = {
-          posisi_jan: parseNumber(row[5]),
+          posisi_prev_year: parseNumber(row[5]),
           posisi_des: parseNumber(row[8]),
           realisasi: parseNumber(row[11]),
           runoff: parseNumber(row[14]),
@@ -792,7 +970,7 @@ export function parsePosisiKreditExcel(workbook) {
 
       const kanwilRow = {
         name: kanwilName,
-        posisi_jan: parseNumber(row[5]),
+        posisi_prev_year: parseNumber(row[5]),
         posisi_des: parseNumber(row[8]),
         realisasi: parseNumber(row[11]),
         runoff: parseNumber(row[14]),
@@ -815,7 +993,7 @@ export function parsePosisiKreditExcel(workbook) {
       cabangData.push({
         name: col1,
         kanwil: kanwilName,
-        posisi_jan: parseNumber(row[5]),
+        posisi_prev_year: parseNumber(row[5]),
         posisi_des: parseNumber(row[8]),
         realisasi: parseNumber(row[11]),
         runoff: parseNumber(row[14]),
@@ -828,7 +1006,7 @@ export function parsePosisiKreditExcel(workbook) {
 
   if (!totalNasional && kanwilData.length > 0) {
     totalNasional = {
-      posisi_jan: kanwilData.reduce((sum, k) => sum + (k.posisi_jan || 0), 0),
+      posisi_prev_year: kanwilData.reduce((sum, k) => sum + (k.posisi_prev_year || 0), 0),
       posisi_des: kanwilData.reduce((sum, k) => sum + (k.posisi_des || 0), 0),
       realisasi: kanwilData.reduce((sum, k) => sum + (k.realisasi || 0), 0),
       runoff: kanwilData.reduce((sum, k) => sum + (k.runoff || 0), 0),

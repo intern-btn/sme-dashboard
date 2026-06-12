@@ -393,13 +393,21 @@ export function formatRealisasiKreditCabangData(cabangData, kanwilName, monthInf
 
 // ==================== Posisi Kredit Formatters ====================
 
+function getPrevYearPositionLabel(monthInfo) {
+  const current = monthInfo?.current || {}
+  const monthLabel = current.shortName || current.name || 'Current'
+  const prevYear = current.year ? current.year - 1 : new Date().getFullYear() - 1
+  return `Posisi ${monthLabel} ${prevYear}`
+}
+
 export function formatPosisiKreditKanwilData(kanwilData, monthInfo) {
-  const headers = ['No', 'Kanwil', 'Posisi Jan (Jt)', 'Realisasi (Jt)', 'Run Off (Jt)', 'Posisi Current (Jt)', 'Gap MTD (Jt)', 'Gap YoY (Jt)']
+  const prevYearPositionLabel = getPrevYearPositionLabel(monthInfo)
+  const headers = ['No', 'Kanwil', `${prevYearPositionLabel} (Jt)`, 'Realisasi (Jt)', 'Run Off (Jt)', 'Posisi Current (Jt)', 'Gap MTD (Jt)', 'Gap YoY (Jt)']
 
   const data = kanwilData.map((k, i) => [
     i + 1,
     k.name,
-    formatNumber(k.posisi_jan || 0),
+    formatNumber(k.posisi_prev_year || 0),
     formatNumber(k.realisasi || 0),
     formatNumber(k.runoff || 0),
     formatNumber(k.posisi_current || 0),
@@ -428,14 +436,15 @@ export function formatPosisiKreditKanwilData(kanwilData, monthInfo) {
 }
 
 export function formatPosisiKreditCabangData(cabangData, kanwilName, monthInfo) {
-  const headers = ['No', 'Cabang', 'Posisi Awal (Jt)', 'Posisi Current (Jt)', 'Gap MTD (Jt)', 'Gap YoY (Jt)']
+  const prevYearPositionLabel = getPrevYearPositionLabel(monthInfo)
+  const headers = ['No', 'Cabang', `${prevYearPositionLabel} (Jt)`, 'Posisi Current (Jt)', 'Gap MTD (Jt)', 'Gap YoY (Jt)']
 
   const sortedCabang = [...cabangData].sort((a, b) => (b.posisi_current || 0) - (a.posisi_current || 0))
 
   const data = sortedCabang.map((c, i) => [
     i + 1,
     c.name,
-    formatNumber(c.posisi_jan || 0),
+    formatNumber(c.posisi_prev_year || 0),
     formatNumber(c.posisi_current || 0),
     styledCell(formatNumber(c.gap_mtd || 0), getGapStyle(c.gap_mtd, false)),
     styledCell(formatNumber(c.gap_yoy || 0), getGapStyle(c.gap_yoy, false))

@@ -287,60 +287,64 @@ export default function HomeDashboard({
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-3">
                 Distribusi per Kanwil
               </p>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-6">
 
-                <div>
-                  <p className="text-xs text-center text-gray-400 mb-1">NPL</p>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={nplKanwilPieData}
-                        cx="50%"
-                        cy="42%"
-                        innerRadius={80}
-                        outerRadius={130}
-                        dataKey="value"
-                        strokeWidth={1}
-                        stroke="#fff"
-                      >
-                        {nplKanwilPieData.map((_, i) => (
-                          <Cell key={i} fill={KANWIL_COLORS[i % KANWIL_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(v, name) => [`${fmt(v)} Jt`, name]}
-                        contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${BTN_RED}` }}
-                      />
-                      <Legend iconSize={12} iconType="circle" wrapperStyle={{ fontSize: 13 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="min-w-0">
+                  <p className="text-xs text-center text-gray-400 mb-3">NPL</p>
+                  <div className="h-[340px] sm:h-[380px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                        <Pie
+                          data={nplKanwilPieData}
+                          cx="50%"
+                          cy="46%"
+                          innerRadius={76}
+                          outerRadius={122}
+                          dataKey="value"
+                          strokeWidth={1}
+                          stroke="#fff"
+                        >
+                          {nplKanwilPieData.map((_, i) => (
+                            <Cell key={i} fill={KANWIL_COLORS[i % KANWIL_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v, name) => [`${fmt(v)} Jt`, name]}
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${BTN_RED}` }}
+                        />
+                        <Legend iconSize={12} iconType="circle" wrapperStyle={{ fontSize: 13 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-xs text-center text-gray-400 mb-1">KOL 2</p>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={kol2KanwilPieData}
-                        cx="50%"
-                        cy="42%"
-                        innerRadius={80}
-                        outerRadius={130}
-                        dataKey="value"
-                        strokeWidth={1}
-                        stroke="#fff"
-                      >
-                        {kol2KanwilPieData.map((_, i) => (
-                          <Cell key={i} fill={KANWIL_COLORS[i % KANWIL_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(v, name) => [`${fmt(v)} Jt`, name]}
-                        contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${BTN_AMBER}` }}
-                      />
-                      <Legend iconSize={12} iconType="circle" wrapperStyle={{ fontSize: 13 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="min-w-0">
+                  <p className="text-xs text-center text-gray-400 mb-3">KOL 2</p>
+                  <div className="h-[340px] sm:h-[380px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                        <Pie
+                          data={kol2KanwilPieData}
+                          cx="50%"
+                          cy="46%"
+                          innerRadius={76}
+                          outerRadius={122}
+                          dataKey="value"
+                          strokeWidth={1}
+                          stroke="#fff"
+                        >
+                          {kol2KanwilPieData.map((_, i) => (
+                            <Cell key={i} fill={KANWIL_COLORS[i % KANWIL_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v, name) => [`${fmt(v)} Jt`, name]}
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${BTN_AMBER}` }}
+                        />
+                        <Legend iconSize={12} iconType="circle" wrapperStyle={{ fontSize: 13 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
               </div>

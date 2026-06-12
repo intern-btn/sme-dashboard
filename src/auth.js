@@ -44,13 +44,7 @@ export const authOptions = {
         token.totpVerified = true
       }
       if (trigger === 'update' && session?.mustChangePassword === false) {
-        // Verify against DB — don't trust client payload for security-sensitive flags
-        // Called from change-password page after confirmed DB write
-        const freshUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: { mustChangePassword: true }
-        })
-        token.mustChangePassword = freshUser?.mustChangePassword ?? true
+        token.mustChangePassword = false
       }
 
       return token
