@@ -25,7 +25,9 @@ export default function MemoLayout({ children }) {
   }
 
   const memoNavLinks = [
+    { href: '/memo/dashboard', label: 'Dashboard' },
     { href: '/memo', label: 'Semua Memo', exact: true },
+    { href: '/memo/sla', label: 'Monitor SLA' },
     { href: '/memo/new', label: '+ Buat Memo' },
   ]
 

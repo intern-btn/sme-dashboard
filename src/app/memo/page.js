@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from './layout'
+import { PipelineMini, HoursBadge } from './components/TrackingWidgets'
 
 const STATUS_CONFIG = {
   draft:       { label: 'Draft',       color: 'bg-gray-100 text-gray-600' },
@@ -143,6 +144,8 @@ export default function MemoListPage() {
                   <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Dari</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Kategori</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Sirkulasi</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Lama di Step</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Dibuat Oleh</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Tanggal</th>
                 </tr>
@@ -163,6 +166,8 @@ export default function MemoListPage() {
                     <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap max-w-[180px] truncate">{memo.dari || '-'}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><CategoryBadge category={memo.category} /></td>
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={memo.status} /></td>
+                    <td className="px-4 py-3"><PipelineMini memo={memo} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap"><HoursBadge memo={memo} /></td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{memo.createdBy}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(memo.tanggalMemo)}</td>
                   </tr>

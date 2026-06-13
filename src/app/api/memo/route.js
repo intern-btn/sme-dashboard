@@ -43,6 +43,8 @@ export async function GET(request) {
         id: true, nomorMemo: true, category: true, perihal: true,
         dari: true, status: true, createdBy: true,
         tanggalMemo: true, createdAt: true, updatedAt: true,
+        trackingStep: true, stepHistory: true, slaHours: true,
+        trackingRoles: true, trackingStartedAt: true, trackingCompletedAt: true,
       }
     }),
     prisma.memo.count({ where }),

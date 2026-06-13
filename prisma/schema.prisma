@@ -80,4 +80,12 @@ model Memo {
   reviewedAt    DateTime?
   approvedAt    DateTime?
   distributedAt DateTime?
+
+  // --- Tracking sirkulasi (pipeline PIC → Kadept → Sekretaris → Kadiv → PIC → Arsip) ---
+  trackingStep        Int       @default(0)    // index tahap aktif (>= jumlah tahap berarti selesai)
+  stepHistory         String    @default("[]") // JSON: [{ step: int, date: ISO, note: string, by: string }]
+  slaHours            Int       @default(8)    // batas SLA per tahap (jam)
+  trackingRoles       String    @default("{}") // JSON: { pic, kadept, sekretaris, kadiv }
+  trackingStartedAt   DateTime?                // null = tracking belum dimulai
+  trackingCompletedAt DateTime?
 }

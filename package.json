@@ -8,7 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "node --experimental-vm-modules prisma/seed.js",
-    "db:migrate": "prisma migrate deploy"
+    "db:seed:memos": "node --experimental-vm-modules prisma/seed-memos.js",
+    "db:migrate": "node scripts/apply-turso-migrations.mjs",
+    "db:migrate:baseline": "node scripts/apply-turso-migrations.mjs --baseline-existing",
+    "db:migrate:dry": "node scripts/apply-turso-migrations.mjs --dry-run",
+    "db:setup": "npm run db:migrate && prisma generate && npm run db:seed:memos",
+    "db:setup:baseline": "npm run db:migrate:baseline && prisma generate && npm run db:seed:memos"
   },
   "prisma": {
     "seed": "node --experimental-vm-modules prisma/seed.js"

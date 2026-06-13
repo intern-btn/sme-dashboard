@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import MemoPreview from '../components/MemoPreview'
+import { TrackingPanel } from '../components/TrackingWidgets'
 import { useAuth } from '../layout'
 
 const MemoEditor = dynamic(() => import('../components/MemoEditor'), { ssr: false })
@@ -563,6 +564,15 @@ export default function MemoDetailPage() {
               </>
             )}
           </div>
+
+          {/* Tracking sirkulasi */}
+          {!editMode && (
+            <TrackingPanel
+              memo={memo}
+              canManage={user && hasRole(user.role, 'editor')}
+              onUpdated={(m) => { setMemo(m); setEditForm(parseMemo(m)) }}
+            />
+          )}
 
           {/* Attachments */}
           <div className="border-t border-gray-100 pt-4">

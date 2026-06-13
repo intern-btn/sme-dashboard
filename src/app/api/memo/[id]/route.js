@@ -73,6 +73,57 @@ export async function PATCH(request, { params }) {
         updateData.distributedTo = JSON.stringify(fields.distributedTo || [])
         break
 
+      case 'start_tracking': {
+        if (!hasRole(user.role, 'editor')) return NextResponse.json({ error: 'Requires editor role' }, { status: 403 })
+        if (memo.trackingStartedAt) return NextResponse.json({ error: 'Tracking sudah dimulai' }, { status: 400 })
+        const roles = fields.roles && typeof fields.roles === 'object' ? fields.roles : {}
+        const now = new Date()
+        updateData.trackingStartedAt = now
+        updateData.trackingCompletedAt = null
+        updateData.trackingStep = 0
+        updateData.slaHours = Math.min(72, Math.max(1, parseInt(fields.slaHours) || 8))
+        updateData.trackingRoles = JSON.stringify({
+          pic: roles.pic || user.name || '',
+          kadept: roles.kadept || '',
+          sekretaris: roles.sekretaris || '',
+          kadiv: roles.kadiv || '',
+        })
+        updateData.stepHistory = JSON.stringify([
+          { step: 0, date: now.toISOString(), note: fields.note || 'Tracking dimulai', by: user.name },
+        ])
+        break
+      }
+
+      case 'advance_step': {
+        if (!hasRole(user.role, 'editor')) return NextResponse.json({ error: 'Requires editor role' }, { status: 403 })
+        if (!memo.trackingStartedAt) return NextResponse.json({ error: 'Tracking belum dimulai' }, { status: 400 })
+        const TOTAL_STEPS = 6
+        if (memo.trackingStep >= TOTAL_STEPS) return NextResponse.json({ error: 'Tracking sudah selesai' }, { status: 400 })
+        const now = new Date()
+        const nextStep = memo.trackingStep + 1
+        let history
+        try { history = JSON.parse(memo.stepHistory || '[]') } catch { history = [] }
+        history.push({ step: nextStep, date: now.toISOString(), note: fields.note || '', by: user.name })
+        updateData.trackingStep = nextStep
+        updateData.stepHistory = JSON.stringify(history)
+        if (nextStep >= TOTAL_STEPS) updateData.trackingCompletedAt = now
+        break
+      }
+
+      case 'update_tracking': {
+        if (!hasRole(user.role, 'editor')) return NextResponse.json({ error: 'Requires editor role' }, { status: 403 })
+        if (!memo.trackingStartedAt) return NextResponse.json({ error: 'Tracking belum dimulai' }, { status: 400 })
+        if (fields.roles && typeof fields.roles === 'object') {
+          let current
+          try { current = JSON.parse(memo.trackingRoles || '{}') } catch { current = {} }
+          updateData.trackingRoles = JSON.stringify({ ...current, ...fields.roles })
+        }
+        if (fields.slaHours) {
+          updateData.slaHours = Math.min(72, Math.max(1, parseInt(fields.slaHours) || 8))
+        }
+        break
+      }
+
       default:
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
