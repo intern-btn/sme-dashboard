@@ -44,13 +44,14 @@ export default function UsersTable({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto -mx-0">
+        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: 640 }}>
           <thead className="bg-gray-50">
             <tr>
               <Th label="Username" onSort={() => setSortBy(setSort, 'username')} />
               <Th label="Nama" onSort={() => setSortBy(setSort, 'displayName')} />
               <Th label="Role" onSort={() => setSortBy(setSort, 'role')} />
+              <Th label="Akses" onSort={() => setSortBy(setSort, 'accessScope')} />
               <Th label="Status" onSort={() => setSortBy(setSort, 'isActive')} />
               <Th label="TOTP" />
               <Th label="Dibuat" onSort={() => setSortBy(setSort, 'createdAt')} />
@@ -74,6 +75,15 @@ export default function UsersTable({
                       {ROLE_LABELS[user.role] || user.role}
                     </span>
                   </td>
+                  <td className="px-3 py-2 text-xs text-gray-600">
+                    {user.accessScope === 'kanwil' ? (
+                      <span title={user.kanwil || ''}>KW: {user.kanwil || '—'}</span>
+                    ) : user.accessScope === 'cabang' ? (
+                      <span title={`${user.kanwil} / ${user.cabang}`}>KC: {user.cabang || '—'}</span>
+                    ) : (
+                      <span className="text-gray-400">Nasional</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {user.isActive ? 'Aktif' : 'Nonaktif'}
@@ -92,34 +102,31 @@ export default function UsersTable({
                   <td className="px-3 py-2 text-xs text-gray-400">
                     {new Date(user.createdAt).toLocaleDateString('id-ID')}
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex items-center justify-end gap-1 flex-wrap">
-                      {/* Edit */}
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
                       <button
                         onClick={() => onEdit(user)}
                         className="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
                       >
                         Edit
                       </button>
-                      {/* Reset Password */}
                       <button
                         onClick={() => onResetPassword(user)}
                         disabled={isPwdResetting}
                         className="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        {isPwdResetting ? '...' : 'Reset PWD'}
+                        {isPwdResetting ? '...' : 'PWD'}
                       </button>
-                      {/* Reset TOTP */}
                       {user.totpEnabled && (
                         <button
                           onClick={() => onResetTotp(user)}
                           disabled={isTotpResetting}
+                          title="Reset TOTP"
                           className="px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                         >
-                          {isTotpResetting ? '...' : 'Reset TOTP'}
+                          {isTotpResetting ? '...' : 'TOTP'}
                         </button>
                       )}
-                      {/* Toggle Active — disabled for self or while toggling */}
                       <button
                         onClick={() => !isSelf && onToggleActive(user)}
                         disabled={isSelf || togglingUser === user.id}
@@ -132,9 +139,8 @@ export default function UsersTable({
                             : 'border-green-300 text-green-700 hover:bg-green-50'
                         }`}
                       >
-                        {togglingUser === user.id ? '...' : user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        {togglingUser === user.id ? '...' : user.isActive ? 'Nonaktif' : 'Aktifkan'}
                       </button>
-                      {/* Delete — disabled for self */}
                       <button
                         onClick={() => !isSelf && onDelete(user)}
                         disabled={isSelf}

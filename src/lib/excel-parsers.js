@@ -712,17 +712,26 @@ export function parseRealisasiKreditExcel(workbook) {
     return hasCurrentMonth && hasCurrentYear
   }
 
-  const findColumnByHeader = ({ name, headerMatcher }) => {
+  const isYTDLabel = (value) => {
+    const label = normalizeHeaderText(value)
+    if (!label || !/\bsd\b/.test(label)) return false
+    const hasCurrentMonth = currentMonthAliases.some((alias) => label.includes(alias))
+    const hasCurrentYear = label.includes(`'${currentYearShort}`) || label.includes(currentYearFull)
+    return hasCurrentMonth && hasCurrentYear
+  }
+
+  const findColumnByHeader = ({ name, headerMatcher, periodMatcher = isCurrentPeriodLabel, required = true }) => {
     for (let col = 0; col <= sheetRange.e.c; col++) {
       const headerLabel = normalizeHeaderText(getMergedCellValue(headerRowIndex, col))
       const periodLabel = getMergedCellValue(periodRowIndex, col)
 
-      if (headerMatcher(headerLabel) && isCurrentPeriodLabel(periodLabel)) {
+      if (headerMatcher(headerLabel) && periodMatcher(periodLabel)) {
         return col
       }
     }
 
-    throw new Error(`Unable to locate 44a1 column "${name}" for ${currentMonth.fullLabel}`)
+    if (required) throw new Error(`Unable to locate 44a1 column "${name}" for ${currentMonth.fullLabel}`)
+    return null
   }
 
   const valueColumns = {
@@ -737,7 +746,19 @@ export function parseRealisasiKreditExcel(workbook) {
     umkm_real_current: findColumnByHeader({
       name: 'umkm_real_current',
       headerMatcher: (label) => label.includes('real umkm')
-    })
+    }),
+    kumk_ytd_current: findColumnByHeader({
+      name: 'kumk_ytd_current',
+      headerMatcher: (label) => label.includes('real kumk'),
+      periodMatcher: isYTDLabel,
+      required: false
+    }),
+    kur_ytd_current: findColumnByHeader({
+      name: 'kur_ytd_current',
+      headerMatcher: (label) => label.includes('kur reguler'),
+      periodMatcher: isYTDLabel,
+      required: false
+    }),
   }
 
   console.log('44a1 resolved columns:', valueColumns)
@@ -745,7 +766,9 @@ export function parseRealisasiKreditExcel(workbook) {
   const extractCurrentValues = (row) => ({
     kumk_real_current: parseNumber(row[valueColumns.kumk_real_current]),
     kur_total_current: parseNumber(row[valueColumns.kur_total_current]),
-    umkm_real_current: parseNumber(row[valueColumns.umkm_real_current])
+    umkm_real_current: parseNumber(row[valueColumns.umkm_real_current]),
+    kumk_ytd_current: valueColumns.kumk_ytd_current != null ? parseNumber(row[valueColumns.kumk_ytd_current]) : null,
+    kur_ytd_current: valueColumns.kur_ytd_current != null ? parseNumber(row[valueColumns.kur_ytd_current]) : null,
   })
 
   const kanwilData = []
@@ -756,7 +779,9 @@ export function parseRealisasiKreditExcel(workbook) {
   // Kanwil name mapping for Excel variations
   const kanwilNameMap = {
     'Jatim Bali Nusra': 'Jabanus',
-    'Jatim Bali': 'Jabanus'
+    'Jatim Bali': 'Jabanus',
+    'Sumatera I': 'Sumatera 1',
+    'Sumatera II': 'Sumatera 2',
   }
 
   const dataStartRow = headerRowIndex + 2
@@ -821,11 +846,14 @@ export function parseRealisasiKreditExcel(workbook) {
   }
 
   if (!totalNasional && kanwilData.length > 0) {
-    // Calculate total if missing
     totalNasional = {
       kumk_real_current: kanwilData.reduce((sum, k) => sum + (k.kumk_real_current || 0), 0),
       kur_total_current: kanwilData.reduce((sum, k) => sum + (k.kur_total_current || 0), 0),
-      umkm_real_current: kanwilData.reduce((sum, k) => sum + (k.umkm_real_current || 0), 0)
+      umkm_real_current: kanwilData.reduce((sum, k) => sum + (k.umkm_real_current || 0), 0),
+      kumk_ytd_current: kanwilData.some(k => k.kumk_ytd_current != null)
+        ? kanwilData.reduce((sum, k) => sum + (k.kumk_ytd_current || 0), 0) : null,
+      kur_ytd_current: kanwilData.some(k => k.kur_ytd_current != null)
+        ? kanwilData.reduce((sum, k) => sum + (k.kur_ytd_current || 0), 0) : null,
     }
   }
 
@@ -955,6 +983,8 @@ export function parsePosisiKreditExcel(workbook) {
           posisi_des: parseNumber(row[8]),
           realisasi: parseNumber(row[11]),
           runoff: parseNumber(row[14]),
+          kumk_posisi_current: parseNumber(row[15]),
+          kur_posisi_current: parseNumber(row[16]),
           posisi_current: parseNumber(row[17]),
           gap_mtd: parseNumber(row[20]),
           gap_yoy: parseNumber(row[23])
@@ -974,6 +1004,8 @@ export function parsePosisiKreditExcel(workbook) {
         posisi_des: parseNumber(row[8]),
         realisasi: parseNumber(row[11]),
         runoff: parseNumber(row[14]),
+        kumk_posisi_current: parseNumber(row[15]),
+        kur_posisi_current: parseNumber(row[16]),
         posisi_current: parseNumber(row[17]),
         gap_mtd: parseNumber(row[20]),
         gap_yoy: parseNumber(row[23])
@@ -1010,6 +1042,8 @@ export function parsePosisiKreditExcel(workbook) {
       posisi_des: kanwilData.reduce((sum, k) => sum + (k.posisi_des || 0), 0),
       realisasi: kanwilData.reduce((sum, k) => sum + (k.realisasi || 0), 0),
       runoff: kanwilData.reduce((sum, k) => sum + (k.runoff || 0), 0),
+      kumk_posisi_current: kanwilData.reduce((sum, k) => sum + (k.kumk_posisi_current || 0), 0),
+      kur_posisi_current: kanwilData.reduce((sum, k) => sum + (k.kur_posisi_current || 0), 0),
       posisi_current: kanwilData.reduce((sum, k) => sum + (k.posisi_current || 0), 0),
       gap_mtd: kanwilData.reduce((sum, k) => sum + (k.gap_mtd || 0), 0),
       gap_yoy: kanwilData.reduce((sum, k) => sum + (k.gap_yoy || 0), 0)
@@ -1028,6 +1062,118 @@ export function parsePosisiKreditExcel(workbook) {
     },
     parsedAt: new Date().toISOString()
   }
+}
+
+// ============================================
+// RKAP TARGET PARSERS
+// ============================================
+
+export function parseRKAPKURExcel(workbook) {
+  const sheetName = workbook.SheetNames[0]
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const kanwilNameMap = {
+    'Jatim Bali Nusra': 'Jabanus', 'Jatim Bali': 'Jabanus',
+    'Sumatera I': 'Sumatera 1', 'Sumatera II': 'Sumatera 2',
+  }
+  const kanwilData = []
+  let national = null
+
+  const toCumulative = (monthly) => {
+    let running = 0
+    return monthly.map(v => { running += v; return running })
+  }
+
+  for (let i = 5; i < data.length; i++) {
+    const row = data[i]
+    const name = String(row[37] || '').trim()
+    if (!name) continue
+    if (name.toLowerCase() === 'total') {
+      const monthly = Array.from({ length: 12 }, (_, m) => parseNumber(row[40 + m]))
+      national = { monthly, cumMonthly: toCumulative(monthly) }
+      break
+    }
+    if (kanwilData.length >= 9) break
+    const monthly = Array.from({ length: 12 }, (_, m) => parseNumber(row[40 + m]))
+    kanwilData.push({
+      name: kanwilNameMap[name] || name,
+      monthly,
+      cumMonthly: toCumulative(monthly)
+    })
+  }
+
+  return { type: 'rkap_kur', year: 2026, kanwilData, national, parsedAt: new Date().toISOString() }
+}
+
+export function parseRKAPKUMKExcel(workbook) {
+  const sheetName = workbook.SheetNames[0]
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const kanwilNameMap = {
+    'Jatim Bali Nusra': 'Jabanus', 'Jatim Bali': 'Jabanus',
+    'Sumatera I': 'Sumatera 1', 'Sumatera II': 'Sumatera 2',
+  }
+  const kanwilData = []
+  let national = null
+  let pastKcSection = false
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i]
+
+    // Skip KC detail section — wait for its TOTAL NASIONAL row first
+    if (!pastKcSection) {
+      const rowStr = row.slice(0, 6).map(v => String(v || '').toUpperCase()).join('|')
+      if (rowStr.includes('TOTAL NASIONAL')) pastKcSection = true
+      continue
+    }
+
+    const col3 = String(row[3] || '').trim()
+    if (!col3 || col3.toUpperCase() === 'WILAYAH') continue
+
+    // TOTAL NASIONAL of Kanwil summary section
+    const col1 = String(row[1] || '').trim()
+    if (col1.toUpperCase().includes('TOTAL NASIONAL') || col3.toUpperCase().includes('TOTAL NASIONAL')) {
+      national = { cumMonthly: Array.from({ length: 12 }, (_, m) => parseNumber(row[5 + m])) }
+      break
+    }
+
+    // Kanwil rows: cols A–C empty, col D = kanwil name, col E = Target VOA (skip), cols F–Q = Jan–Dec
+    if (String(row[0] || '').trim()) continue
+
+    kanwilData.push({
+      name: kanwilNameMap[col3] || col3,
+      cumMonthly: Array.from({ length: 12 }, (_, m) => parseNumber(row[5 + m]))
+    })
+  }
+
+  return { type: 'rkap_kumk', year: 2026, kanwilData, national, parsedAt: new Date().toISOString() }
+}
+
+export function parseRKAPPosisiExcel(workbook) {
+  const sheetName = workbook.SheetNames[0]
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+  const kanwilNameMap = { 'Sumatera I': 'Sumatera 1', 'Sumatera II': 'Sumatera 2' }
+  const kanwilData = []
+
+  for (let i = 4; i < data.length; i++) {
+    const row = data[i]
+    const col1 = String(row[1] || '').trim()
+    if (!col1) continue
+    if (col1 === 'Kantor Cabang') break
+    const name = kanwilNameMap[col1] || col1
+    kanwilData.push({
+      name,
+      annual: parseNumber(row[17]),
+      monthly: Array.from({ length: 12 }, (_, m) => parseNumber(row[5 + m])),
+      kurMonthly: Array.from({ length: 12 }, (_, m) => parseNumber(row[24 + m]))
+    })
+  }
+
+  const national = kanwilData.length > 0 ? {
+    annual: kanwilData.reduce((s, k) => s + k.annual, 0),
+    monthly: Array.from({ length: 12 }, (_, m) => kanwilData.reduce((s, k) => s + k.monthly[m], 0)),
+    kurMonthly: Array.from({ length: 12 }, (_, m) => kanwilData.reduce((s, k) => s + k.kurMonthly[m], 0))
+  } : null
+
+  return { type: 'rkap_posisi', year: 2026, kanwilData, national, parsedAt: new Date().toISOString() }
 }
 
 // ============================================

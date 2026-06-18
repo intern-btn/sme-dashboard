@@ -30,6 +30,14 @@ export async function middleware(req) {
     return NextResponse.redirect(url)
   }
 
+  // mustChangePassword is false — kick out of /change-password so it never becomes a TOTP callbackUrl
+  if (isChangePwdPage) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
   if (token.totpVerified !== true) {
     if (isTotpPage) return NextResponse.next()
 
@@ -44,6 +52,13 @@ export async function middleware(req) {
   if (pathname.startsWith('/admin') && token?.role !== 'admin') {
     const url = req.nextUrl.clone()
     url.pathname = '/'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
+  if (pathname.startsWith('/monitoring/business') && token?.accessScope !== 'national') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/monitoring'
     url.search = ''
     return NextResponse.redirect(url)
   }

@@ -102,6 +102,7 @@ export default function AppHeader({
   const role = user?.role
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(56)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const mainNav = [
     { href: '/', label: 'Beranda' },
@@ -134,6 +135,15 @@ export default function AppHeader({
     }
   }, [memoNavLinks?.length, role])
 
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [pathname])
+
+  const handleMobileMenuClick = () => {
+    if (showMenuButton && onMenuClick) onMenuClick()
+    setMobileNavOpen(open => !open)
+  }
+
   return (
     <>
       <header
@@ -143,18 +153,21 @@ export default function AppHeader({
       >
         <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            {showMenuButton && (
-              <button
-                type="button"
-                onClick={onMenuClick || (() => {})}
-                className="sm:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-blue-700/60"
-                aria-label="Open menu"
-              >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button
+              type="button"
+              onClick={handleMobileMenuClick}
+              className="sm:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-blue-700/60 transition-colors"
+              aria-label="Open navigation menu"
+              aria-expanded={mobileNavOpen}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileNavOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            )}
+                )}
+              </svg>
+            </button>
             <Link href="/" className="flex items-center gap-3 opacity-95 hover:opacity-100 whitespace-nowrap">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/c/ca/BTN_2024.svg"
@@ -221,6 +234,55 @@ export default function AppHeader({
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {mobileNavOpen && (
+          <div className="sm:hidden border-t border-blue-700/60 bg-[#003d7a] shadow-xl">
+            <nav className="max-w-screen-xl mx-auto px-4 py-3" aria-label="Mobile navigation">
+              <div className="grid gap-1">
+                {mainNav.map(item => {
+                  const active = isActive(pathname, item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+                        active ? 'bg-white text-blue-900' : 'text-blue-100 hover:bg-blue-700'
+                      }`}
+                    >
+                      {item.label}
+                      {active && <span className="text-xs font-medium">Aktif</span>}
+                    </Link>
+                  )
+                })}
+              </div>
+
+              {memoNavLinks && memoNavLinks.length > 0 && (
+                <div className="mt-3 border-t border-blue-700/60 pt-3">
+                  <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-blue-200">
+                    Menu Halaman
+                  </p>
+                  <div className="grid gap-1">
+                    {memoNavLinks.map(link => {
+                      const active = link.exact ? pathname === link.href : pathname.startsWith(link.href)
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+                            active ? 'bg-white text-blue-900' : 'text-blue-100 hover:bg-blue-700'
+                          }`}
+                        >
+                          {link.label}
+                          {active && <span className="text-xs font-medium">Aktif</span>}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </nav>
           </div>
         )}
       </header>

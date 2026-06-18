@@ -5,7 +5,10 @@ import {
   parseKOL2Excel,
   parseRealisasiExcel,
   parseRealisasiKreditExcel,
-  parsePosisiKreditExcel
+  parsePosisiKreditExcel,
+  parseRKAPKURExcel,
+  parseRKAPKUMKExcel,
+  parseRKAPPosisiExcel
 } from '../../../../lib/excel-parsers.js'
 import { getStorage } from '../../../../lib/storage/index.js'
 import { getToken } from 'next-auth/jwt'
@@ -57,20 +60,36 @@ export async function POST(request) {
       kol2: null,
       realisasi: null,
       realisasi_kredit: null,
-      posisi_kredit: null
+      realisasi_kredit_fallback: null, // 44a.Real Produk — used if 44a1 parse fails
+      posisi_kredit: null,
+      rkap_kur: null,
+      rkap_kumk: null,
+      rkap_posisi: null
     }
 
     const patterns = {
+      rkap_kur: /^44a3/i,
+      rkap_kumk: /^44a5/i,
+      rkap_posisi: /^47a/i,
       npl: /^49c/i,
       kol2: /^49b/i,
       realisasi: /^22a/i,
       realisasi_kredit: /^44a1/i,
+      realisasi_kredit_fallback: /^44a\b/i, // matches 44a. but not 44a1/44a3/44a5
       posisi_kredit: /^47\.\s*posisi/i
     }
 
     for (const sheetName of workbook.SheetNames) {
-      if (patterns.realisasi_kredit.test(sheetName)) {
+      if (patterns.rkap_kur.test(sheetName)) {
+        sheetMap.rkap_kur = sheetName
+      } else if (patterns.rkap_kumk.test(sheetName)) {
+        sheetMap.rkap_kumk = sheetName
+      } else if (patterns.rkap_posisi.test(sheetName)) {
+        sheetMap.rkap_posisi = sheetName
+      } else if (patterns.realisasi_kredit.test(sheetName)) {
         sheetMap.realisasi_kredit = sheetName
+      } else if (patterns.realisasi_kredit_fallback.test(sheetName)) {
+        sheetMap.realisasi_kredit_fallback = sheetName
       } else if (patterns.posisi_kredit.test(sheetName)) {
         sheetMap.posisi_kredit = sheetName
       } else if (patterns.realisasi.test(sheetName)) {
@@ -85,6 +104,7 @@ export async function POST(request) {
     console.log('Sheet mapping:', sheetMap)
 
     let nplData, kol2Data, realisasiData, realisasiKreditData, posisiKreditData
+    let rkapKurData, rkapKumkData, rkapPosisiData
     const parsedSheets = []
     const missingSheets = []
 
@@ -108,15 +128,42 @@ export async function POST(request) {
       parsedSheets.push('Realisasi')
     } else missingSheets.push('Realisasi')
 
-    if (sheetMap.realisasi_kredit) {
-      realisasiKreditData = parseRealisasiKreditExcel(parseSheet(sheetMap.realisasi_kredit))
-      parsedSheets.push('Realisasi Kredit')
+    if (sheetMap.realisasi_kredit || sheetMap.realisasi_kredit_fallback) {
+      const primary = sheetMap.realisasi_kredit
+      const fallback = sheetMap.realisasi_kredit_fallback
+      try {
+        realisasiKreditData = parseRealisasiKreditExcel(parseSheet(primary || fallback))
+        parsedSheets.push('Realisasi Kredit')
+      } catch (primaryErr) {
+        if (primary && fallback) {
+          console.warn(`44a1 parse failed (${primary}), trying fallback (${fallback}): ${primaryErr.message}`)
+          realisasiKreditData = parseRealisasiKreditExcel(parseSheet(fallback))
+          parsedSheets.push('Realisasi Kredit (fallback)')
+        } else {
+          throw primaryErr
+        }
+      }
     } else missingSheets.push('Realisasi Kredit')
 
     if (sheetMap.posisi_kredit) {
       posisiKreditData = parsePosisiKreditExcel(parseSheet(sheetMap.posisi_kredit))
       parsedSheets.push('Posisi Kredit')
     } else missingSheets.push('Posisi Kredit')
+
+    if (sheetMap.rkap_kur) {
+      rkapKurData = parseRKAPKURExcel(parseSheet(sheetMap.rkap_kur))
+      parsedSheets.push('RKAP KUR')
+    } else missingSheets.push('RKAP KUR')
+
+    if (sheetMap.rkap_kumk) {
+      rkapKumkData = parseRKAPKUMKExcel(parseSheet(sheetMap.rkap_kumk))
+      parsedSheets.push('RKAP KUMK')
+    } else missingSheets.push('RKAP KUMK')
+
+    if (sheetMap.rkap_posisi) {
+      rkapPosisiData = parseRKAPPosisiExcel(parseSheet(sheetMap.rkap_posisi))
+      parsedSheets.push('RKAP Posisi')
+    } else missingSheets.push('RKAP Posisi')
 
     const monthInfo = nplData?.monthInfo || kol2Data?.monthInfo || realisasiData?.monthInfo ||
                       realisasiKreditData?.monthInfo || posisiKreditData?.monthInfo
@@ -146,6 +193,9 @@ export async function POST(request) {
       await storage.put('posisi_kredit_metadata.json', { filename: 'Multi-sheet Excel (Posisi Kredit sheet)', uploadDate, fileSize: buffer.length, monthInfo })
       await storage.put('posisi_kredit_parsed.json', posisiKreditData)
     }
+    if (rkapKurData)    await storage.put('rkap_kur_parsed.json', rkapKurData)
+    if (rkapKumkData)   await storage.put('rkap_kumk_parsed.json', rkapKumkData)
+    if (rkapPosisiData) await storage.put('rkap_posisi_parsed.json', rkapPosisiData)
 
     // Save historical versions
     if (nplData) await storage.put(`history/${uploadId}_npl.json`, nplData, { allowOverwrite: false })
@@ -184,7 +234,10 @@ export async function POST(request) {
         realisasiKreditKanwil: realisasiKreditData?.kanwilData?.length || 0,
         realisasiKreditCabang: realisasiKreditData?.cabangData?.length || 0,
         posisiKreditKanwil: posisiKreditData?.kanwilData?.length || 0,
-        posisiKreditCabang: posisiKreditData?.cabangData?.length || 0
+        posisiKreditCabang: posisiKreditData?.cabangData?.length || 0,
+        rkapKurKanwil: rkapKurData?.kanwilData?.length ?? null,
+        rkapKumkKanwil: rkapKumkData?.kanwilData?.length ?? null,
+        rkapPosisiKanwil: rkapPosisiData?.kanwilData?.length ?? null,
       }
     })
 

@@ -24,11 +24,12 @@ export default function MemoLayout({ children }) {
     )
   }
 
+  const isNational = !authState.user?.accessScope || authState.user.accessScope === 'national'
   const memoNavLinks = [
     { href: '/memo/dashboard', label: 'Dashboard' },
     { href: '/memo', label: 'Semua Memo', exact: true },
     { href: '/memo/sla', label: 'Monitor SLA' },
-    { href: '/memo/new', label: '+ Buat Memo' },
+    ...(isNational ? [{ href: '/memo/new', label: '+ Buat Memo' }] : []),
   ]
 
   return (

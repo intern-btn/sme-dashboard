@@ -23,7 +23,9 @@ export async function GET(request) {
       username: true,
       displayName: true,
       role: true,
+      accessScope: true,
       kanwil: true,
+      cabang: true,
       isActive: true,
       mustChangePassword: true,
       totpEnabled: true,
@@ -40,7 +42,7 @@ export async function POST(request) {
   if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
-  const { username, displayName, role, kanwil } = body
+  const { username, displayName, role, accessScope: rawScope, kanwil, cabang } = body
   if (!username || !displayName || !role) {
     return NextResponse.json({ error: 'username, displayName, role are required' }, { status: 400 })
   }
@@ -48,6 +50,13 @@ export async function POST(request) {
   const validRoles = ['staff', 'manager', 'admin']
   if (!validRoles.includes(role)) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+  }
+
+  // Admin role always gets national scope
+  const accessScope = role === 'admin' ? 'national' : (rawScope || 'national')
+  const validScopes = ['national', 'kanwil', 'cabang']
+  if (!validScopes.includes(accessScope)) {
+    return NextResponse.json({ error: 'Invalid accessScope' }, { status: 400 })
   }
 
   const existing = await prisma.user.findUnique({ where: { username } })
@@ -62,7 +71,9 @@ export async function POST(request) {
       passwordHash,
       displayName,
       role,
-      kanwil: kanwil || null,
+      accessScope,
+      kanwil: accessScope !== 'national' ? (kanwil || null) : null,
+      cabang: accessScope === 'cabang' ? (cabang || null) : null,
       mustChangePassword: true,
     },
     select: {
@@ -70,7 +81,9 @@ export async function POST(request) {
       username: true,
       displayName: true,
       role: true,
+      accessScope: true,
       kanwil: true,
+      cabang: true,
       isActive: true,
       mustChangePassword: true,
       totpEnabled: true,
@@ -97,7 +110,7 @@ export async function PATCH(request) {
   if (!token) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
-  const { id, displayName, role, kanwil, isActive } = body
+  const { id, displayName, role, accessScope: rawScope, kanwil, cabang, isActive } = body
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   if (role !== undefined) {
@@ -106,6 +119,19 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
   }
+
+  if (rawScope !== undefined) {
+    const validScopes = ['national', 'kanwil', 'cabang']
+    if (!validScopes.includes(rawScope)) {
+      return NextResponse.json({ error: 'Invalid accessScope' }, { status: 400 })
+    }
+  }
+
+  // Derive effective scope (admin always national)
+  const effectiveRole = role !== undefined ? role : undefined
+  const effectiveScope = effectiveRole === 'admin'
+    ? 'national'
+    : (rawScope !== undefined ? rawScope : undefined)
 
   // Self-demote guard
   if (id === token.sub && role !== undefined && role !== token.role) {
@@ -141,7 +167,15 @@ export async function PATCH(request) {
   const updateData = {}
   if (displayName !== undefined) updateData.displayName = displayName
   if (role !== undefined) updateData.role = role
-  if (kanwil !== undefined) updateData.kanwil = kanwil
+  if (effectiveScope !== undefined) {
+    updateData.accessScope = effectiveScope
+    if (effectiveScope === 'national') {
+      updateData.kanwil = null
+      updateData.cabang = null
+    }
+  }
+  if (kanwil !== undefined && effectiveScope !== 'national') updateData.kanwil = kanwil || null
+  if (cabang !== undefined) updateData.cabang = (effectiveScope === 'cabang' ? (cabang || null) : null)
   if (isActive !== undefined) updateData.isActive = isActive
 
   const updated = await prisma.user.update({
@@ -152,7 +186,9 @@ export async function PATCH(request) {
       username: true,
       displayName: true,
       role: true,
+      accessScope: true,
       kanwil: true,
+      cabang: true,
       isActive: true,
       mustChangePassword: true,
       totpEnabled: true,

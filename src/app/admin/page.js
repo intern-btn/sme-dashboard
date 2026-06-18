@@ -519,14 +519,17 @@ export default function AdminPage() {
             <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-blue-900">
-                    <strong>Multi-Sheet Excel:</strong> Upload satu file Excel yang berisi 5 sheet dengan awalan:
+                    <strong>Multi-Sheet Excel:</strong> Upload satu file Excel yang berisi sheet dengan awalan berikut:
                   </p>
                   <ul className="text-xs text-blue-800 mt-2 ml-4 space-y-1">
-                    <li>• <strong>22a</strong> - Realisasi Harian</li>
-                    <li>• <strong>44a1</strong> - Realisasi Kredit</li>
-                    <li>• <strong>44b</strong> - Posisi Kredit</li>
-                    <li>• <strong>49b</strong> - KOL 2</li>
-                    <li>• <strong>49c</strong> - NPL</li>
+                    <li>• <strong>22a</strong> — Realisasi Harian</li>
+                    <li>• <strong>44a1</strong> — Realisasi Kredit</li>
+                    <li>• <strong>44a3</strong> — Target RKAP KUR</li>
+                    <li>• <strong>44a5</strong> — Target RKAP KUMK</li>
+                    <li>• <strong>47. Posisi</strong> — Posisi Kredit</li>
+                    <li>• <strong>47a</strong> — Target RKAP Posisi</li>
+                    <li>• <strong>49b</strong> — KOL 2</li>
+                    <li>• <strong>49c</strong> — NPL</li>
                   </ul>
                 </div>
                 <div>
@@ -610,6 +613,9 @@ export default function AdminPage() {
                     <p>Realisasi Harian: {uploadStats.realisasiDays} hari</p>
                     <p>Realisasi Kredit: {uploadStats.realisasiKreditKanwil} kanwil, {uploadStats.realisasiKreditCabang} cabang</p>
                     <p>Posisi Kredit: {uploadStats.posisiKreditKanwil} kanwil, {uploadStats.posisiKreditCabang} cabang</p>
+                    {uploadStats.rkapKurKanwil != null && <p>RKAP KUR: {uploadStats.rkapKurKanwil} kanwil</p>}
+                    {uploadStats.rkapKumkKanwil != null && <p>RKAP KUMK: {uploadStats.rkapKumkKanwil} kanwil</p>}
+                    {uploadStats.rkapPosisiKanwil != null && <p>RKAP Posisi: {uploadStats.rkapPosisiKanwil} kanwil</p>}
                   </div>
                 )}
               </div>

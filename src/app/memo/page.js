@@ -66,6 +66,7 @@ export default function MemoListPage() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'
 
   const canCreate = user && ['editor', 'approver', 'admin'].includes(user.role)
+  const isNational = !user?.accessScope || user.accessScope === 'national'
 
   return (
     <div>
@@ -97,14 +98,16 @@ export default function MemoListPage() {
             <option value="izin_prinsip">Izin Prinsip</option>
           </select>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-          <select value={filters.status} onChange={e => handleFilter('status', e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Status</option>
-            {Object.entries(STATUS_CONFIG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
-          </select>
-        </div>
+        {isNational && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select value={filters.status} onChange={e => handleFilter('status', e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Semua Status</option>
+              {Object.entries(STATUS_CONFIG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
+            </select>
+          </div>
+        )}
         <form onSubmit={e => { e.preventDefault(); handleFilter('search', draftSearch) }} className="flex gap-2">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>

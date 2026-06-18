@@ -97,14 +97,14 @@ export default function UsersSection() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Manajemen Pengguna</h1>
           <p className="text-sm text-gray-500 mt-0.5">Kelola akun pengguna sistem.</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+          className="self-start sm:self-auto px-4 py-2 rounded-lg text-sm font-semibold text-white whitespace-nowrap"
           style={{ backgroundColor: '#003d7a' }}
         >
           + Tambah Pengguna

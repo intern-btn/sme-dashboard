@@ -39,9 +39,9 @@ export default function ChangePasswordPage() {
         return
       }
 
-      // Clear the mustChangePassword flag from the JWT
       await update({ mustChangePassword: false })
-      router.push('/')
+      router.replace('/')
+      router.refresh()
     } catch {
       setError('Terjadi kesalahan jaringan.')
     } finally {

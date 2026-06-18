@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { getMonthInfo } from '../lib/dateUtils'
 import ExportButton from './ExportButton'
 import { exportTableToPDF, formatRealisasiDailyData } from '../lib/pdfExport'
 
 export default function Realisasi({ data }) {
   const [activeView, setActiveView] = useState('total')
+  const [chartMode, setChartMode] = useState('harian')
 
   if (!data || !data.dailyData) {
     return <div className="min-h-screen flex items-center justify-center text-gray-700 bg-white">Loading...</div>
@@ -34,6 +35,8 @@ export default function Realisasi({ data }) {
     currentTotal: day.total || 0,
     currentKur: day.kur || 0,
     currentKumk: day.kumk || 0,
+    currentSmeSwadana: day.smeSwadana || 0,
+    currentKumkLainnya: day.kumkLainnya || 0,
     currentKppSupply: day.kppSupply || 0,
     currentKppDemand: day.kppDemand || 0,
     previousTotal: day.total_previous || 0,
@@ -42,6 +45,31 @@ export default function Realisasi({ data }) {
     previousKppSupply: day.kppSupply_previous || 0,
     previousKppDemand: day.kppDemand_previous || 0
   }))
+
+  // Cumulative (running sum) version
+  let cumCurrTotal = 0, cumCurrKur = 0, cumCurrKumk = 0, cumCurrSme = 0, cumCurrLainnya = 0, cumCurrKppS = 0, cumCurrKppD = 0
+  let cumPrevTotal = 0, cumPrevKur = 0, cumPrevKumk = 0, cumPrevKppS = 0, cumPrevKppD = 0
+  const cumulativeData = comparisonData.map(d => {
+    cumCurrTotal += d.currentTotal; cumCurrKur += d.currentKur; cumCurrKumk += d.currentKumk
+    cumCurrSme += d.currentSmeSwadana; cumCurrLainnya += d.currentKumkLainnya
+    cumCurrKppS += d.currentKppSupply; cumCurrKppD += d.currentKppDemand
+    cumPrevTotal += d.previousTotal; cumPrevKur += d.previousKur; cumPrevKumk += d.previousKumk
+    cumPrevKppS += d.previousKppSupply; cumPrevKppD += d.previousKppDemand
+    return {
+      date: d.date,
+      currentTotal: cumCurrTotal, currentKur: cumCurrKur, currentKumk: cumCurrKumk,
+      currentSmeSwadana: cumCurrSme, currentKumkLainnya: cumCurrLainnya,
+      currentKppSupply: cumCurrKppS, currentKppDemand: cumCurrKppD,
+      previousTotal: cumPrevTotal, previousKur: cumPrevKur, previousKumk: cumPrevKumk,
+      previousKppSupply: cumPrevKppS, previousKppDemand: cumPrevKppD,
+    }
+  })
+
+  const chartData = chartMode === 'harian' ? comparisonData : cumulativeData
+
+  // Last index in dailyData that has real data — trims trailing zero rows from the table
+  const lastDataIdx = dailyData.reduce((last, day, i) => (day.total || 0) > 0 ? i : last, -1)
+  const tableData = lastDataIdx >= 0 ? chartData.slice(0, lastDataIdx + 1) : chartData
 
   // Calculate totals
   const currentTotal = monthlyTotals?.current || dailyData.reduce((sum, day) => sum + (day.total || 0), 0)
@@ -96,6 +124,9 @@ export default function Realisasi({ data }) {
     },
   ]
 
+  const fmtJtShort = v => Math.abs(v) >= 1_000 ? `${(v / 1_000).toFixed(0)}rb` : String(Math.round(v || 0))
+  const activeConfig = lineConfigs.find(c => c.key === activeView)
+
   return (
     <div className="p-6">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
@@ -127,147 +158,92 @@ export default function Realisasi({ data }) {
 
       {/* Tabbed Comparison Chart */}
       <div className="border border-gray-200 rounded-xl p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-xl font-bold uppercase" style={{ color: '#003d7a' }}>
-            Perbandingan {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
+            {chartMode === 'kumulatif' ? 'Kumulatif' : 'Perbandingan'} {previousMonth?.name || 'Bulan Lalu'} vs {currentMonth?.name || 'Bulan Ini'}
           </h2>
 
-          {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto flex-shrink-0">
-            <button
-              onClick={() => setActiveView('total')}
-              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeView === 'total'
-                  ? 'text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={activeView === 'total' ? { backgroundColor: '#003d7a' } : {}}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Harian / Kumulatif toggle */}
+            <div className="inline-flex rounded-lg bg-gray-100 p-0.5">
+              {[{ value: 'harian', label: 'Harian' }, { value: 'kumulatif', label: 'Kumulatif' }].map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setChartMode(o.value)}
+                  className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${
+                    chartMode === o.value ? 'bg-white text-[#003d7a] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Metric dropdown */}
+            <select
+              value={activeView}
+              onChange={e => setActiveView(e.target.value)}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-gray-200 bg-white text-[#003d7a] shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#003d7a]/30"
             >
-              Total Realisasi
-            </button>
-            <button
-              onClick={() => setActiveView('kur')}
-              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeView === 'kur'
-                  ? 'text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={activeView === 'kur' ? { backgroundColor: '#003d7a' } : {}}
-            >
-              KUR
-            </button>
-            <button
-              onClick={() => setActiveView('kumk')}
-              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeView === 'kumk'
-                  ? 'text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={activeView === 'kumk' ? { backgroundColor: '#003d7a' } : {}}
-            >
-              KUMK
-            </button>
-            <button
-              onClick={() => setActiveView('kppSupply')}
-              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeView === 'kppSupply'
-                  ? 'text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={activeView === 'kppSupply' ? { backgroundColor: '#003d7a' } : {}}
-            >
-              KPP Supply
-            </button>
-            <button
-              onClick={() => setActiveView('kppDemand')}
-              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeView === 'kppDemand'
-                  ? 'text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={activeView === 'kppDemand' ? { backgroundColor: '#003d7a' } : {}}
-            >
-              KPP Demand
-            </button>
+              <option value="total">Total Realisasi</option>
+              <option value="kur">KUR</option>
+              <option value="kumk">KUMK</option>
+              <option value="kppSupply">KPP Supply</option>
+              <option value="kppDemand">KPP Demand</option>
+            </select>
           </div>
         </div>
 
-        <div style={{ width: '100%', height: 300 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={comparisonData}
-              margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="date"
-                stroke="#6B7280"
-                label={{ value: 'Tanggal', position: 'insideBottom', offset: -5, fill: '#6B7280' }}
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis
-                stroke="#6B7280"
-                tickFormatter={(value) => formatJt(value)}
-                label={{ value: 'Realisasi (Jt)', angle: -90, position: 'insideLeft', fill: '#6B7280' }}
-                style={{ fontSize: '12px' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#FFFFFF',
-                  border: '2px solid #1976D2',
-                  borderRadius: '8px',
-                  color: '#1F2937',
-                  padding: '12px'
-                }}
-                formatter={(value) => `Rp ${formatJt(value)} Jt`}
-                labelFormatter={(label) => `Tanggal ${label}`}
-              />
-              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-
-              {lineConfigs.map((config) => {
-                const hidden = activeView !== config.key
-
-                return (
-                  [
-                    <Line
-                      key={`${config.key}-current`}
-                      hide={hidden}
-                      legendType={hidden ? 'none' : undefined}
-                      type="monotone"
-                      dataKey={config.currentKey}
-                      stroke="#1976D2"
-                      strokeWidth={3}
-                      name={config.currentName}
-                      dot={{ fill: '#1976D2', r: 4 }}
-                      activeDot={{ r: 6 }}
-                      isAnimationActive={false}
-                    />,
-                    <Line
-                      key={`${config.key}-previous`}
-                      hide={hidden}
-                      legendType={hidden ? 'none' : undefined}
-                      type="monotone"
-                      dataKey={config.previousKey}
-                      stroke="#9333EA"
-                      strokeWidth={3}
-                      name={config.previousName}
-                      dot={{ fill: '#9333EA', r: 4 }}
-                      strokeDasharray="5 5"
-                      isAnimationActive={false}
-                    />
-                  ]
-                )
-              })}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradRealisasiCurrent" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#003d7a" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#003d7a" stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+            <YAxis tickFormatter={fmtJtShort} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={52} />
+            <Tooltip
+              formatter={(v, name) => [`${formatJt(v)} Jt`, name]}
+              labelFormatter={(l) => `Tgl ${l}`}
+              contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #003d7a' }}
+            />
+            <Area
+              type="monotone"
+              dataKey={activeConfig?.currentKey}
+              name={activeConfig?.currentName}
+              stroke="#003d7a"
+              strokeWidth={2.5}
+              fill="url(#gradRealisasiCurrent)"
+              dot={false}
+              activeDot={{ r: 4, fill: '#003d7a' }}
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey={activeConfig?.previousKey}
+              name={activeConfig?.previousName}
+              stroke="#94A3B8"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              fill="none"
+              dot={false}
+              activeDot={{ r: 3, fill: '#94A3B8' }}
+              isAnimationActive={false}
+            />
+            <Legend iconType="line" iconSize={12} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Daily Table */}
       <div className="border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-            Realisasi Per Hari — {currentMonth?.fullLabel || 'Bulan Ini'}
+            {chartMode === 'kumulatif' ? 'Realisasi Kumulatif' : 'Realisasi Per Hari'} — {currentMonth?.fullLabel || 'Bulan Ini'}
           </h2>
           <ExportButton onClick={handleExportRealisasiHarian} label="Export PDF" />
         </div>
@@ -284,13 +260,13 @@ export default function Realisasi({ data }) {
                 <th className="py-3 px-4 text-right font-semibold">KPP Supply</th>
                 <th className="py-3 px-4 text-right font-semibold">KPP Demand</th>
                 <th className="py-3 px-4 text-right font-semibold">Total</th>
-                <th className="py-3 px-4 text-center font-semibold">Trend</th>
+                {chartMode === 'harian' && <th className="py-3 px-4 text-center font-semibold">Trend</th>}
               </tr>
             </thead>
             <tbody className="text-sm bg-white">
-              {dailyData.map((day, idx) => {
-                const prevDay = idx > 0 ? dailyData[idx - 1] : null
-                const diff = prevDay ? day.total - prevDay.total : 0
+              {tableData.map((row, idx) => {
+                const prevRow = idx > 0 ? tableData[idx - 1] : null
+                const diff = prevRow ? row.currentTotal - prevRow.currentTotal : 0
                 const isUp = diff > 0
 
                 return (
@@ -299,40 +275,42 @@ export default function Realisasi({ data }) {
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="py-3 px-4 font-semibold" style={{ color: '#003d7a' }}>
-                      {day.date} {currentMonth?.shortName || ''}
+                      {row.date} {currentMonth?.shortName || ''}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatJt(day.kur)}
+                      {formatJt(row.currentKur)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatJt(day.kumk)}
+                      {formatJt(row.currentKumk)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatJt(day.smeSwadana)}
+                      {formatJt(row.currentSmeSwadana)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900">
-                      {formatJt(day.kumkLainnya || 0)}
+                      {formatJt(row.currentKumkLainnya)}
                     </td>
                     <td className="py-3 px-4 text-right text-blue-600">
-                      {formatJt(day.kppSupply || 0)}
+                      {formatJt(row.currentKppSupply)}
                     </td>
                     <td className="py-3 px-4 text-right text-purple-600">
-                      {formatJt(day.kppDemand || 0)}
+                      {formatJt(row.currentKppDemand)}
                     </td>
                     <td className="py-3 px-4 text-right text-gray-900 font-bold">
-                      {formatJt(day.total)}
+                      {formatJt(row.currentTotal)}
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      {idx === 0 ? (
-                        <span className="text-gray-400">-</span>
-                      ) : isUp ? (
-                        <span className="text-green-600 font-bold">+ {formatJt(Math.abs(diff))}</span>
-                      ) : diff < 0 ? (
-                        <span className="text-red-600 font-bold">- {formatJt(Math.abs(diff))}</span>
-                      ) : (
-                        <span className="text-gray-500">-</span>
-                      )}
-                    </td>
+                    {chartMode === 'harian' && (
+                      <td className="py-3 px-4 text-center">
+                        {idx === 0 ? (
+                          <span className="text-gray-400">-</span>
+                        ) : isUp ? (
+                          <span className="text-green-600 font-bold">+ {formatJt(Math.abs(diff))}</span>
+                        ) : diff < 0 ? (
+                          <span className="text-red-600 font-bold">- {formatJt(Math.abs(diff))}</span>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 )
               })}

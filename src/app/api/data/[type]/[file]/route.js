@@ -3,6 +3,7 @@ import { getToken } from 'next-auth/jwt'
 import { getStorage } from '../../../../../lib/storage/index.js'
 import { maskBusinessData, normalizeBusinessDataType } from '../../../../../lib/mask.js'
 import { verifyUnlockToken } from '../../../../../lib/crypto.js'
+import { applyScope, getScopeFromToken } from '../../../../../lib/access-scope.js'
 
 export const runtime = 'nodejs'
 
@@ -21,9 +22,7 @@ export async function GET(request, { params }) {
     }
 
     const businessType = normalizeBusinessDataType(type)
-    const token = businessType
-      ? await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-      : null
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
     const cookieValue = businessType ? request.cookies.get(`unlock_${businessType}`)?.value : null
     const isUnlocked = Boolean(
       businessType &&
@@ -31,9 +30,14 @@ export async function GET(request, { params }) {
       cookieValue &&
       verifyUnlockToken(cookieValue, token.sub, businessType)
     )
-    const responseData = file === 'parsed'
+    let responseData = file === 'parsed'
       ? maskBusinessData(data, businessType, isUnlocked)
       : data
+
+    // Apply office-level scope filter on parsed credit/rkap data
+    if (file === 'parsed') {
+      responseData = applyScope(responseData, getScopeFromToken(token), type)
+    }
 
     return NextResponse.json(responseData, {
       headers: { 'Cache-Control': 'no-store, max-age=0' }

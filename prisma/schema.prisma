@@ -13,7 +13,9 @@ model User {
   passwordHash   String
   displayName    String
   role           String             @default("viewer") // viewer | editor | approver | admin
+  accessScope    String             @default("national") // national | kanwil | cabang
   kanwil         String?
+  cabang         String?
   isActive           Boolean            @default(true)
   mustChangePassword Boolean            @default(false)
   totpSecret     String?

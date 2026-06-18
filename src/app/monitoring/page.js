@@ -6,25 +6,21 @@ import AppHeader from '../components/AppHeader'
 import Dashboard from '../components/Dashboard'
 import KanwilDetail from '../components/KanwilDetail'
 import Realisasi from '../components/Realisasi'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { KANWIL_LIST } from '../../lib/offices.js'
 
-const monitoringSubNav = [
-  { href: '/monitoring', label: 'Credit Monitoring', exact: true },
-  { href: '/monitoring/business', label: 'Business Monitoring' },
-]
+function buildSubNav(user) {
+  const links = [{ href: '/monitoring', label: 'Credit Monitoring', exact: true }]
+  if (!user || user.accessScope === 'national') {
+    links.push({ href: '/monitoring/business', label: 'Business Monitoring' })
+  }
+  return links
+}
 
-const KANWIL_TABS = [
+const ALL_KANWIL_TABS = [
   { id: -1, label: 'Realisasi' },
   { id: 0,  label: 'Overview' },
-  { id: 1,  label: 'Jakarta I' },
-  { id: 2,  label: 'Jakarta II' },
-  { id: 3,  label: 'Jateng DIY' },
-  { id: 4,  label: 'Jabanus' },
-  { id: 5,  label: 'Jawa Barat' },
-  { id: 6,  label: 'Kalimantan' },
-  { id: 7,  label: 'Sulampua' },
-  { id: 8,  label: 'Sumatera 1' },
-  { id: 9,  label: 'Sumatera 2' },
+  ...KANWIL_LIST.map((name, i) => ({ id: i + 1, label: name })),
 ]
 
 export default function MonitoringPage() {
@@ -35,6 +31,27 @@ export default function MonitoringPage() {
       .then(data => setUser(data?.user || null))
       .catch(() => setUser(null))
   }, [])
+
+  // Build tab list based on user scope
+  const KANWIL_TABS = useMemo(() => {
+    const scope = user?.accessScope || 'national'
+    if (scope === 'national') return ALL_KANWIL_TABS
+    if (scope === 'kanwil' && user?.kanwil) {
+      const idx = KANWIL_LIST.indexOf(user.kanwil)
+      if (idx !== -1) {
+        return [
+          { id: -1, label: 'Realisasi' },
+          { id: 0,  label: 'Overview' },
+          { id: idx + 1, label: user.kanwil },
+        ]
+      }
+    }
+    // cabang or unknown kanwil: Realisasi + Overview only
+    return [
+      { id: -1, label: 'Realisasi' },
+      { id: 0,  label: 'Overview' },
+    ]
+  }, [user])
 
   const { data: nplData, metadata: nplMetadata, loading: nplLoading } = useDataFetch('npl', null)
   const { data: kol2Data, metadata: kol2Metadata, loading: kol2Loading } = useDataFetch('kol2', null)
@@ -89,7 +106,7 @@ export default function MonitoringPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader user={user} memoNavLinks={monitoringSubNav} />
+      <AppHeader user={user} memoNavLinks={buildSubNav(user)} />
 
       {/* Kanwil tab bar */}
       <div className="sticky top-[96px] z-40 bg-white border-b border-gray-200 shadow-sm">

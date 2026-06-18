@@ -7,7 +7,13 @@ export const runtime = 'nodejs'
 async function getUser(request) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) return null
-  return { id: token.sub, name: token.name, role: token.role }
+  return {
+    id: token.sub,
+    name: token.name,
+    role: token.role,
+    accessScope: token.accessScope || 'national',
+    kanwil: token.kanwil || null,
+  }
 }
 
 const ROLE_HIERARCHY = ['viewer', 'editor', 'approver', 'admin']
@@ -22,6 +28,15 @@ export async function GET(request, { params }) {
   const { id } = await params
   const memo = await prisma.memo.findUnique({ where: { id } })
   if (!memo) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Kanwil/cabang users may only read memos distributed to their kanwil
+  const isRestricted = user.accessScope === 'kanwil' || user.accessScope === 'cabang'
+  if (isRestricted) {
+    const distributedTo = JSON.parse(memo.distributedTo || '[]')
+    if (memo.status !== 'distributed' || !distributedTo.includes(user.kanwil)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  }
 
   return NextResponse.json({ memo })
 }

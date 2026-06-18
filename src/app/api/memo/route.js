@@ -7,7 +7,14 @@ export const runtime = 'nodejs'
 async function getUser(request) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   if (!token) return null
-  return { id: token.sub, name: token.name, role: token.role }
+  return {
+    id: token.sub,
+    name: token.name,
+    role: token.role,
+    accessScope: token.accessScope || 'national',
+    kanwil: token.kanwil || null,
+    cabang: token.cabang || null,
+  }
 }
 
 export async function GET(request) {
@@ -21,8 +28,18 @@ export async function GET(request) {
   const page = parseInt(searchParams.get('page') || '1')
   const limit = 20
 
+  const isRestricted = user.accessScope === 'kanwil' || user.accessScope === 'cabang'
+  // The kanwil to match — cabang users inherit their parent kanwil
+  const scopeKanwil = isRestricted ? user.kanwil : null
+
   const where = {}
-  if (status) where.status = status
+  if (isRestricted) {
+    // Non-national users only see distributed memos addressed to their kanwil
+    where.status = 'distributed'
+    where.distributedTo = { contains: `"${scopeKanwil}"` }
+  } else {
+    if (status) where.status = status
+  }
   if (category) where.category = category
   if (search) {
     where.OR = [

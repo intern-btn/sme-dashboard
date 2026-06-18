@@ -11,6 +11,13 @@ export async function GET(request) {
 
   return NextResponse.json({
     authenticated: true,
-    user: { name: token.name, username: token.name, role: token.role },
+    user: {
+      name: token.name,
+      username: token.name,
+      role: token.role,
+      accessScope: token.accessScope || 'national',
+      kanwil: token.kanwil || null,
+      cabang: token.cabang || null,
+    },
   })
 }
