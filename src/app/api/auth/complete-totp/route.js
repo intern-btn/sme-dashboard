@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../../../auth.js'
+import { cookies } from 'next/headers'
+import { decode } from 'next-auth/jwt'
 import { prisma } from '../../../../lib/db.js'
 import { encryptSecret, decryptSecret } from '../../../../lib/crypto.js'
 import { getClientIp, getUserAgent } from '../../../../lib/request-meta.js'
@@ -9,10 +9,20 @@ import { TotpRateLimitError, verifyTotpWithRateLimit } from '../../../../lib/tot
 export const runtime = 'nodejs'
 
 export async function POST(request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
+  const cookieStore = await cookies()
+  const cookieName =
+    process.env.NODE_ENV === 'production'
+      ? '__Secure-next-auth.session-token'
+      : 'next-auth.session-token'
+  const rawToken = cookieStore.get(cookieName)?.value
+  if (!rawToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const decoded = await decode({ token: rawToken, secret: process.env.NEXTAUTH_SECRET })
+  if (!decoded?.sub) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const userId = decoded.sub
 
   const body = await request.json().catch(() => ({}))
   const code = String(body.code || '').trim()
@@ -24,7 +34,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+  const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user || !user.isActive) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -49,6 +59,11 @@ export async function POST(request) {
     if (!success) {
       return NextResponse.json({ error: 'Incorrect code' }, { status: 401 })
     }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { totpLastVerifiedAt: new Date() },
+    })
 
     if (enrollmentSecret) {
       await prisma.user.update({

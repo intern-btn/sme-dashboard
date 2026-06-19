@@ -139,6 +139,14 @@ export default function AppHeader({
     setMobileNavOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    const handlePageShow = (e) => {
+      if (e.persisted && !user) window.location.reload()
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [user])
+
   const handleMobileMenuClick = () => {
     if (showMenuButton && onMenuClick) onMenuClick()
     setMobileNavOpen(open => !open)

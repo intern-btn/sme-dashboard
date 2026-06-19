@@ -94,8 +94,9 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   const cwd = process.cwd()
 
+  // Load order: .env.local overrides .env, but external shell vars always win
+  loadEnvFile(resolve(cwd, '.env.local'))
   loadEnvFile(resolve(cwd, '.env'))
-  loadEnvFile(resolve(cwd, '.env.local'), { override: true })
 
   const url = process.env.DATABASE_URL
   const authToken = process.env.TURSO_AUTH_TOKEN

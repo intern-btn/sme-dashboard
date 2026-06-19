@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 
 export default function OtpForms({ mode, secret, qrCodeDataUrl, otpauthUrl }) {
   const router = useRouter()
@@ -24,6 +24,7 @@ export default function OtpForms({ mode, secret, qrCodeDataUrl, otpauthUrl }) {
 
     const res = await fetch('/api/auth/complete-totp', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code,
@@ -91,6 +92,16 @@ export default function OtpForms({ mode, secret, qrCodeDataUrl, otpauthUrl }) {
       >
         {submitting ? 'Memverifikasi...' : mode === 'enroll' ? 'Confirm enrollment' : 'Verify'}
       </button>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+        >
+          Kembali ke halaman login
+        </button>
+      </div>
     </form>
   )
 }

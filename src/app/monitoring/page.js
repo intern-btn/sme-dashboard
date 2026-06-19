@@ -13,6 +13,7 @@ function buildSubNav(user) {
   const links = [{ href: '/monitoring', label: 'Credit Monitoring', exact: true }]
   if (!user || user.accessScope === 'national') {
     links.push({ href: '/monitoring/business', label: 'Business Monitoring' })
+    links.push({ href: '/monitoring/productivity', label: 'Productivity' })
   }
   return links
 }

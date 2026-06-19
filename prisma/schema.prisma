@@ -18,9 +18,10 @@ model User {
   cabang         String?
   isActive           Boolean            @default(true)
   mustChangePassword Boolean            @default(false)
-  totpSecret     String?
-  totpEnabled    Boolean            @default(false)
-  createdAt      DateTime           @default(now())
+  totpSecret         String?
+  totpEnabled        Boolean            @default(false)
+  totpLastVerifiedAt DateTime?
+  createdAt          DateTime           @default(now())
   totpAttempts   TotpAttempt[]
   auditLogs      SecurityAuditLog[] @relation("AuditLogSubject")
   actedAuditLogs SecurityAuditLog[] @relation("AuditLogActor")

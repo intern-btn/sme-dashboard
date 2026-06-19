@@ -22,6 +22,7 @@ export async function POST(request, { params }) {
     data: {
       totpSecret: null,
       totpEnabled: false,
+      totpLastVerifiedAt: null,
     },
   })
 

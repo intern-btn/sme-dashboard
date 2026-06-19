@@ -9,10 +9,21 @@ export async function middleware(req) {
   const isChangePwdPage = pathname === '/change-password'
   const isAuthRoute = pathname.startsWith('/api/auth')
 
-  if (isLoginPage || isAuthRoute) return NextResponse.next()
+  if (isAuthRoute) return NextResponse.next()
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const isLoggedIn = !!token
+
+  if (isLoginPage) {
+    // redirect partially-authenticated users to the TOTP page
+    if (token && token.totpVerified !== true && token.mustChangePassword !== true) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/verify-otp'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
 
   if (!isLoggedIn) {
     const callbackUrl = `${pathname}${req.nextUrl.search || ''}`

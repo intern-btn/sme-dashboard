@@ -497,7 +497,7 @@ function RealisasiHarianSection({
   )
 }
 
-function RKAPTable({ rkapKurData, rkapKumkData, rkapPosisiData, realKreditData, posisiData }) {
+function RKAPTable({ rkapKurData, rkapKumkData, rkapPosisiData, realKreditData, posisiData, user }) {
   const hasRkap = rkapKurData || rkapKumkData || rkapPosisiData
   const monthInfo = realKreditData?.monthInfo?.current ?? posisiData?.monthInfo?.current
   const currentMonthIdx = monthInfo?.month ?? new Date().getMonth()
@@ -568,7 +568,12 @@ function RKAPTable({ rkapKurData, rkapKumkData, rkapPosisiData, realKreditData, 
   )
 
   const [rkapView, setRkapView] = useState('realisasi')
-  const rows = hasRkap ? [...KANWIL_ORDER.map(getRow), getNationalRow()] : []
+  const isScoped = user?.accessScope === 'kanwil' || user?.accessScope === 'cabang'
+  const rows = hasRkap
+    ? isScoped && user?.kanwil
+      ? [getRow(user.kanwil)]
+      : [...KANWIL_ORDER.map(getRow), getNationalRow()]
+    : []
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -670,6 +675,7 @@ export default function HomeDashboard({
   bpjsStats, bpjsMeta, bpjsTrend,
   indomaretStats, indomaretMeta, indomaretTrend,
   rkapKurData, rkapKumkData, rkapPosisiData,
+  productivityData, productivityMeta,
 }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -739,6 +745,22 @@ export default function HomeDashboard({
   const bpjsTrendPts  = buildTrend(bpjsTrend)
   const indomaretTrendPts = buildTrend(indomaretTrend)
 
+  // Productivity summary data
+  const prodRows = Array.isArray(productivityData?.rows) ? productivityData.rows : []
+  const prodTotal   = prodRows.length
+  const prodSangat  = prodRows.filter(r => r.kategori === 'Sangat Produktif').length
+  const prodKurang  = prodRows.filter(r => r.kategori === 'Kurang Produktif').length
+  const prodTidak   = prodRows.filter(r => r.kategori === 'Tidak Produktif').length
+  const achValues   = prodRows.map(r => r.pctAch).filter(v => v != null && !isNaN(v))
+  const prodAvgAch  = achValues.length > 0
+    ? (achValues.reduce((a, b) => a + b, 0) / achValues.length).toFixed(1)
+    : null
+  const prodPie = [
+    { name: 'Sangat', value: prodSangat,  fill: '#16a34a' },
+    { name: 'Kurang', value: prodKurang,  fill: '#d97706' },
+    { name: 'Tidak',  value: prodTidak,   fill: '#dc2626' },
+  ].filter(d => d.value > 0)
+
   const miniAxisProps = {
     tick: { fontSize: 8, fill: '#9CA3AF' },
     tickLine: false,
@@ -757,7 +779,13 @@ export default function HomeDashboard({
           <h2 className="text-2xl font-bold text-white leading-none">
             {user?.name ?? 'SME Dashboard'}
           </h2>
-          <p className="text-sm text-white/50 mt-1">Business Banking Division</p>
+          <p className="text-sm text-white/50 mt-1">
+            {user?.accessScope === 'kanwil' && user?.kanwil
+              ? user.kanwil
+              : user?.accessScope === 'cabang' && user?.cabang
+              ? user.cabang
+              : 'Business Banking Division'}
+          </p>
         </div>
         <div style={{ height: 3, background: 'linear-gradient(90deg, #E80025, transparent)' }} />
       </div>
@@ -902,106 +930,114 @@ export default function HomeDashboard({
             rkapPosisiData={rkapPosisiData}
             realKreditData={realKreditData}
             posisiData={posisiData}
+            user={user}
           />
         </section>
 
-        {/* ── Section 3: Business Monitoring — national users only ── */}
+        {/* ── Section 3: Productivity — national users only ── */}
         {(!user?.accessScope || user.accessScope === 'national') && <section>
-          <SectionHeader title="Business Monitoring" href="/monitoring/business" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {[
-              { label: 'PRK SPBU',  meta: spbuMeta,      stats: spbuStats,      donut: spbuDonut,      trendPts: spbuTrendPts,      i: 5 },
-              { label: 'BPJS',      meta: bpjsMeta,      stats: bpjsStats,      donut: bpjsDonut,      trendPts: bpjsTrendPts,      i: 6 },
-              { label: 'Indomaret', meta: indomaretMeta, stats: indomaretStats, donut: indomaretDonut, trendPts: indomaretTrendPts, i: 7 },
-            ].map(({ label, meta, stats, donut, trendPts, i }) => (
-              <StatCard key={label} label={label} uploadDate={meta?.uploadDate} style={cardStyle(i)}>
-                {stats ? (
-                  <>
-                    {/* Two-chart row: donut + trend */}
-                    <div className="grid grid-cols-2 gap-1">
-                      {/* Donut */}
-                      <div className="relative">
-                        <ResponsiveContainer width="100%" height={110}>
-                          <PieChart>
-                            <Pie
-                              data={donut.data}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={30}
-                              outerRadius={46}
-                              startAngle={90}
-                              endAngle={-270}
-                              dataKey="value"
-                              strokeWidth={0}
-                            >
-                              <Cell fill={BTN_NAVY} />
-                              <Cell fill={GRAY_200} />
-                            </Pie>
-                            <Tooltip
-                              formatter={(v) => [v.toLocaleString('id-ID'), 'Debitur']}
-                              contentStyle={{ fontSize: 10, borderRadius: 6 }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-sm font-bold text-[#003d7a]">{donut.pct}%</span>
+          <SectionHeader title="Productivity" href="/monitoring/productivity" />
+          {prodTotal > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Left: category metrics */}
+              <StatCard label="Produktivitas RM" uploadDate={productivityMeta?.uploadedAt} style={cardStyle(5)}>
+                <div className="flex flex-col gap-4">
+                  <p className="text-3xl font-bold text-[#003d7a] leading-none">
+                    {prodTotal.toLocaleString('id-ID')}
+                    <span className="text-sm font-normal text-gray-500 ml-1.5">RM</span>
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Sangat Produktif', count: prodSangat, color: '#16a34a', bg: 'bg-green-500' },
+                      { label: 'Kurang Produktif', count: prodKurang, color: '#d97706', bg: 'bg-amber-500' },
+                      { label: 'Tidak Produktif',  count: prodTidak,  color: '#dc2626', bg: 'bg-red-500'   },
+                    ].map(({ label, count, color, bg }) => {
+                      const pct = prodTotal > 0 ? (count / prodTotal) * 100 : 0
+                      return (
+                        <div key={label}>
+                          <div className="flex items-center justify-between mb-1 text-xs">
+                            <span className="text-gray-600">{label}</span>
+                            <span className="font-semibold tabular-nums" style={{ color }}>
+                              {count.toLocaleString('id-ID')}
+                              <span className="text-gray-400 font-normal ml-1">({pct.toFixed(0)}%)</span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${bg} rounded-full`} style={{ width: `${pct}%` }} />
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Trend line */}
-                      {trendPts.length >= 2 ? (
-                        <ResponsiveContainer width="100%" height={110}>
-                          <LineChart data={trendPts} margin={{ top: 6, right: 4, left: -32, bottom: 0 }}>
-                            <XAxis
-                              dataKey="date"
-                              tick={{ fontSize: 8, fill: '#9CA3AF' }}
-                              tickLine={false}
-                              axisLine={false}
-                              interval="preserveStartEnd"
-                            />
-                            <YAxis hide />
-                            <Tooltip
-                              formatter={(v) => [`${fmtJt(v)} Jt`, 'Baki Debet']}
-                              contentStyle={{ fontSize: 10, borderRadius: 4, border: `1px solid ${BTN_NAVY}` }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="value"
-                              stroke={BTN_NAVY}
-                              strokeWidth={1.5}
-                              dot={{ r: 2, fill: BTN_NAVY }}
-                              activeDot={{ r: 3 }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[110px] flex items-center justify-center text-[9px] text-gray-400 text-center px-1 leading-relaxed">
-                          Trend muncul setelah 2+ upload
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stat rows */}
-                    <div className="mt-1 pt-2 border-t border-gray-100 space-y-1">
-                      <p className="text-2xl font-bold text-[#003d7a] leading-none">
-                        {stats.masterTotal.toLocaleString('id-ID')}
-                        <span className="text-xs font-normal text-gray-500 ml-1">debitur</span>
-                      </p>
-                      <MetricRow
-                        label="Debitur Aktif"
-                        value={`${fmt(stats.idasFound)} / ${fmt(stats.masterTotal)}`}
-                      />
-                      <MetricRow label="Baki Debet" value={`${fmtJt(stats.totalBakiDebet)} Jt`} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-[140px] flex items-center justify-center text-sm text-gray-400">
-                    Belum ada data
+                      )
+                    })}
                   </div>
-                )}
+                  {prodAvgAch != null && (
+                    <div className="pt-1 border-t border-gray-100 flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Avg Capaian</span>
+                      <span className="font-bold text-[#003d7a]">{prodAvgAch}%</span>
+                    </div>
+                  )}
+                </div>
               </StatCard>
-            ))}
-          </div>
+
+              {/* Right: donut chart */}
+              <StatCard label="Distribusi Kategori" uploadDate={productivityMeta?.uploadedAt} style={cardStyle(6)}>
+                <div className="flex flex-col gap-3 h-full">
+                  <div className="relative flex-1 min-h-[160px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={prodPie}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={52}
+                          outerRadius={80}
+                          dataKey="value"
+                          strokeWidth={2}
+                          stroke="#fff"
+                        >
+                          {prodPie.map((entry, i) => (
+                            <Cell key={i} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v, n) => [v.toLocaleString('id-ID'), n]}
+                          contentStyle={{ fontSize: 10, borderRadius: 6 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-[#003d7a]">
+                          {prodTotal > 0 ? ((prodSangat / prodTotal) * 100).toFixed(0) : 0}%
+                        </div>
+                        <div className="text-[10px] text-gray-400">produktif</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {prodPie.map(d => (
+                      <div key={d.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: d.fill }} />
+                          <span className="text-gray-600">{d.name}</span>
+                        </div>
+                        <span className="font-semibold tabular-nums text-gray-800">
+                          {d.value.toLocaleString('id-ID')}
+                          <span className="text-gray-400 font-normal ml-1">
+                            ({prodTotal > 0 ? ((d.value / prodTotal) * 100).toFixed(0) : 0}%)
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </StatCard>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-400" style={cardStyle(5)}>
+              Belum ada data Productivity. Upload file PRD via{' '}
+              <a href="/admin" className="text-blue-700 underline">Admin Portal</a>.
+            </div>
+          )}
         </section>}
 
       </main>

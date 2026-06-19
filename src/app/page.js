@@ -34,6 +34,7 @@ export default async function HubPage() {
     rkapKurData,
     rkapKumkData,
     rkapPosisiData,
+    productivityMeta, productivityData,
   ] = await Promise.all([
     storage.get('npl_metadata.json'),
     storage.get('npl_parsed.json'),
@@ -60,6 +61,8 @@ export default async function HubPage() {
     storage.get('rkap_kur_parsed.json'),
     storage.get('rkap_kumk_parsed.json'),
     storage.get('rkap_posisi_parsed.json'),
+    storage.get('productivity_metadata.json'),
+    storage.get('productivity_parsed.json'),
   ])
 
   const spbuStats      = computeMergeStats(spbuIdasData, spbuManualData?.rows)
@@ -90,6 +93,12 @@ export default async function HubPage() {
         bpjsStats={bpjsStats}                 bpjsMeta={bpjsMeta}           bpjsTrend={bpjsTrend}
         indomaretStats={indomaretStats}       indomaretMeta={indomaretMeta} indomaretTrend={indomaretTrend}
         rkapKurData={scopedRkapKurData}       rkapKumkData={scopedRkapKumkData}   rkapPosisiData={scopedRkapPosisiData}
+        productivityData={
+          productivityData?.rows
+            ? { ...productivityData, rows: productivityData.rows.filter(r => !['SCPH', 'SBH'].includes(r.jabatan)) }
+            : productivityData
+        }
+        productivityMeta={productivityMeta}
       />
     </div>
   )

@@ -23,6 +23,7 @@ const TABS = [
 const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
   { href: '/monitoring/business', label: 'Business Monitoring' },
+  { href: '/monitoring/productivity', label: 'Productivity' },
 ]
 
 

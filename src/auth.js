@@ -30,6 +30,8 @@ export const authOptions = {
           kanwil: user.kanwil || null,
           cabang: user.cabang || null,
           mustChangePassword: user.mustChangePassword ?? false,
+          totpEnabled: user.totpEnabled ?? false,
+          totpLastVerifiedAt: user.totpLastVerifiedAt ?? null,
         }
       },
     }),
@@ -47,7 +49,10 @@ export const authOptions = {
         token.accessScope = user.accessScope || 'national'
         token.kanwil = user.kanwil || null
         token.cabang = user.cabang || null
-        token.totpVerified = false
+        const TOTP_WINDOW_MS = 24 * 60 * 60 * 1000
+        const recentlyVerified = user.totpLastVerifiedAt &&
+          (Date.now() - new Date(user.totpLastVerifiedAt).getTime()) < TOTP_WINDOW_MS
+        token.totpVerified = user.totpEnabled && !!recentlyVerified
         token.mustChangePassword = user.mustChangePassword === true
       }
 

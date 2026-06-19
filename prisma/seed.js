@@ -4,13 +4,13 @@ import { PrismaClient } from '../src/generated/prisma/client.ts'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 import bcrypt from 'bcryptjs'
 
-// Load env files (.env then .env.local, later wins)
-for (const envFile of ['.env', '.env.local']) {
+// Load env files — shell vars win, then .env.local, then .env
+for (const envFile of ['.env.local', '.env']) {
   try {
     const lines = readFileSync(resolve(process.cwd(), envFile), 'utf-8').split(/\r?\n/)
     for (const line of lines) {
       const match = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
-      if (match) {
+      if (match && process.env[match[1]] == null) {
         process.env[match[1]] = match[2].trim().replace(/^["']|["']$/g, '')
       }
     }
