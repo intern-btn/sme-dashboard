@@ -9,18 +9,14 @@
     "lint": "next lint",
     "db:seed": "node --experimental-vm-modules prisma/seed.js",
     "db:seed:memos": "node --experimental-vm-modules prisma/seed-memos.js",
-    "db:migrate": "node scripts/apply-turso-migrations.mjs",
-    "db:migrate:baseline": "node scripts/apply-turso-migrations.mjs --baseline-existing",
-    "db:migrate:dry": "node scripts/apply-turso-migrations.mjs --dry-run",
-    "db:setup": "npm run db:migrate && prisma generate && npm run db:seed:memos",
-    "db:setup:baseline": "npm run db:migrate:baseline && prisma generate && npm run db:seed:memos"
+    "db:migrate": "prisma migrate deploy",
+    "db:setup": "prisma migrate deploy && prisma generate && npm run db:seed"
   },
   "prisma": {
     "seed": "node --experimental-vm-modules prisma/seed.js"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.2",
-    "@prisma/adapter-libsql": "^7.5.0",
+    "@prisma/adapter-mssql": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@tiptap/extension-table": "^3.21.0",
     "@tiptap/extension-table-cell": "^3.21.0",
@@ -41,7 +37,6 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^2.15.4",
-    "turso": "^0.6.0-pre.21",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "sqlserver"
 }
 
 model User {
@@ -46,10 +46,10 @@ model SecurityAuditLog {
   action      String
   dataType    String?
   ip          String
-  userAgent   String
+  userAgent   String   @db.NVarChar(Max)
   createdAt   DateTime @default(now())
-  user        User     @relation("AuditLogSubject", fields: [userId], references: [id])
-  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  user        User     @relation("AuditLogSubject", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([userId, createdAt])
   @@index([dataType, createdAt])
@@ -60,13 +60,13 @@ model Memo {
   nomorMemo     String    @default("") // e.g. 0042/M/BBD/CPD/III/2026 — filled manually or left blank in draft
   category      String    @default("general") // general | izin_prinsip
   perihal       String    @default("")
-  kepada        String    @default("[]") // JSON: [{ division: string, department?: string }]
+  kepada        String    @default("[]") @db.NVarChar(Max) // JSON: [{ division: string, department?: string }]
   dari          String    @default("")   // e.g. "Business Banking Division (BBD)"
   tanggalMemo   DateTime  @default(now())
-  konten        String    @default("") // rich text HTML from Tiptap
-  lampiranList  String    @default("[]") // JSON: string[] — numbered lampiran items in document
-  tembusan      String    @default("[]") // JSON: string[] — CC list
-  metadata      String    @default("{}") // JSON: category-specific fields
+  konten        String    @default("") @db.NVarChar(Max) // rich text HTML from Tiptap
+  lampiranList  String    @default("[]") @db.NVarChar(Max) // JSON: string[] — numbered lampiran items in document
+  tembusan      String    @default("[]") @db.NVarChar(Max) // JSON: string[] — CC list
+  metadata      String    @default("{}") @db.NVarChar(Max) // JSON: category-specific fields
   // izin_prinsip metadata keys:
   // namaDebitur, jenisIzinPrinsip, jenisKredit, plafond, jangkaWaktu,
   // nomorMemoKC, nomorMemoResponse, keputusan, kanwil, cabang
@@ -75,9 +75,9 @@ model Memo {
   reviewedBy    String?
   approvedBy    String?
   distributedBy String?
-  distributedTo String    @default("[]") // JSON: kanwil codes
-  attachments   String    @default("[]") // JSON: storage keys for uploaded files
-  notes         String?
+  distributedTo String    @default("[]") @db.NVarChar(Max) // JSON: kanwil codes
+  attachments   String    @default("[]") @db.NVarChar(Max) // JSON: storage keys for uploaded files
+  notes         String?   @db.NVarChar(Max)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   reviewedAt    DateTime?
@@ -86,9 +86,9 @@ model Memo {
 
   // --- Tracking sirkulasi (pipeline PIC → Kadept → Sekretaris → Kadiv → PIC → Arsip) ---
   trackingStep        Int       @default(0)    // index tahap aktif (>= jumlah tahap berarti selesai)
-  stepHistory         String    @default("[]") // JSON: [{ step: int, date: ISO, note: string, by: string }]
+  stepHistory         String    @default("[]") @db.NVarChar(Max) // JSON: [{ step: int, date: ISO, note: string, by: string }]
   slaHours            Int       @default(8)    // batas SLA per tahap (jam)
-  trackingRoles       String    @default("{}") // JSON: { pic, kadept, sekretaris, kadiv }
+  trackingRoles       String    @default("{}") @db.NVarChar(Max) // JSON: { pic, kadept, sekretaris, kadiv }
   trackingStartedAt   DateTime?                // null = tracking belum dimulai
   trackingCompletedAt DateTime?
 }

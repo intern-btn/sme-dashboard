@@ -52,7 +52,7 @@ export async function POST(request) {
     response.cookies.set(`unlock_${dataType}`, signUnlockToken({ userId: user.id, dataType }), {
       httpOnly: true,
       sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? false,
       maxAge: 15 * 60,
       path: '/',
     })

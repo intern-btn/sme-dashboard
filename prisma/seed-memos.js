@@ -5,7 +5,29 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { PrismaClient } from '../src/generated/prisma/client.ts'
-import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { PrismaMssql } from '@prisma/adapter-mssql'
+
+function parseSqlServerUrl(url) {
+  const withoutScheme = url.replace(/^sqlserver:\/\//, '')
+  const parts = withoutScheme.split(';')
+  const [server, portStr] = parts[0].split(':')
+  const params = {}
+  for (const part of parts.slice(1)) {
+    const idx = part.indexOf('=')
+    if (idx > 0) params[part.slice(0, idx).toLowerCase().trim()] = part.slice(idx + 1).trim()
+  }
+  return {
+    server,
+    port: portStr ? Number(portStr) : 1433,
+    database: params.database || params['initial catalog'],
+    user: params.user || params['user id'] || params.uid,
+    password: params.password || params.pwd,
+    options: {
+      encrypt: params.encrypt !== 'false',
+      trustServerCertificate: params.trustservercertificate === 'true',
+    },
+  }
+}
 
 // Load env files (.env then .env.local, later wins)
 for (const envFile of ['.env', '.env.local']) {
@@ -371,9 +393,7 @@ const ipMemos = [
 async function main() {
   const url = process.env.DATABASE_URL
   if (!url) throw new Error('DATABASE_URL is not set')
-
-  const authToken = process.env.TURSO_AUTH_TOKEN
-  const adapter = new PrismaLibSql({ url, authToken })
+  const adapter = new PrismaMssql(parseSqlServerUrl(url))
   const prisma = new PrismaClient({ adapter })
 
   try {

@@ -10,10 +10,10 @@ export const runtime = 'nodejs'
 
 export async function POST(request) {
   const cookieStore = await cookies()
-  const cookieName =
-    process.env.NODE_ENV === 'production'
-      ? '__Secure-next-auth.session-token'
-      : 'next-auth.session-token'
+  const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith('https://')
+  const cookieName = useSecureCookies
+    ? '__Secure-next-auth.session-token'
+    : 'next-auth.session-token'
   const rawToken = cookieStore.get(cookieName)?.value
   if (!rawToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

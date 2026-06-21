@@ -13,7 +13,7 @@ COPY . .
 
 # Placeholders so next build doesn't fail on static analysis of server modules.
 # Actual values are injected at runtime via environment variables.
-ENV DATABASE_URL=file:./dev.db
+ENV DATABASE_URL="sqlserver://localhost:1433;database=placeholder;user=sa;password=Placeholder123!;trustServerCertificate=true"
 ENV NEXTAUTH_SECRET=placeholder-build-only
 ENV TOTP_ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
 ENV TOTP_UNLOCK_SECRET=placeholder-build-only
