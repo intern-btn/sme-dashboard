@@ -7,11 +7,22 @@ export default function PasswordRevealModal({ username, password, context, onClo
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(password)
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(password)
+      } else {
+        // Fallback for HTTP (non-secure) contexts where Clipboard API is unavailable
+        const el = document.createElement('textarea')
+        el.value = password
+        el.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // clipboard API not available; user can select manually
+      // copy still failed; user can select the field manually
     }
   }
 
