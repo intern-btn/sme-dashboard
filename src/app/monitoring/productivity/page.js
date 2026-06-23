@@ -22,7 +22,7 @@ function buildSubNav(user) {
     { href: '/monitoring', label: 'Credit Monitoring', exact: true },
   ]
   if (!user || user.accessScope === 'national') {
-    links.push({ href: '/monitoring/partnership', label: 'Dashboard Partnership' })
+    links.push({ href: '/monitoring/partnership', label: 'Business Monitoring' })
     links.push({ href: '/monitoring/productivity', label: 'Productivity' })
   }
   return links

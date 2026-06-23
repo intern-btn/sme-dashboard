@@ -8,7 +8,7 @@ import PartnershipFormModal from '../../partnership/components/PartnershipFormMo
 
 const monitoringSubNav = [
   { href: '/monitoring', label: 'Credit Monitoring', exact: true },
-  { href: '/monitoring/partnership', label: 'Dashboard Partnership' },
+  { href: '/monitoring/partnership', label: 'Business Monitoring' },
   { href: '/monitoring/productivity', label: 'Productivity' },
 ]
 
@@ -79,7 +79,7 @@ export default function PartnershipMonitoringPage() {
         {/* Page header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Partnership</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Business Monitoring</h1>
             <p className="text-sm text-gray-500 mt-1">{today}</p>
           </div>
           <div className="flex items-center gap-2">
