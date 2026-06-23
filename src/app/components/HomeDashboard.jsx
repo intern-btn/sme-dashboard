@@ -671,9 +671,6 @@ export default function HomeDashboard({
   realKreditData, realKreditMeta,
   posisiData, posisiMeta,
   realHarianData, realHarianMeta,
-  spbuStats, spbuMeta, spbuTrend,
-  bpjsStats, bpjsMeta, bpjsTrend,
-  indomaretStats, indomaretMeta, indomaretTrend,
   rkapKurData, rkapKumkData, rkapPosisiData,
   productivityData, productivityMeta,
 }) {
@@ -717,33 +714,6 @@ export default function HomeDashboard({
   const mtdGrowthPct = mtdCurrent && mtdPrevious
     ? ((mtdCurrent - mtdPrevious) / mtdPrevious * 100).toFixed(2)
     : null
-
-  // Section 3 data
-  function buildDonut(stats) {
-    if (!stats || !stats.masterTotal) return { pct: 0, data: [] }
-    const pct = Math.round(stats.idasFound / stats.masterTotal * 100)
-    return {
-      pct,
-      data: [
-        { value: stats.idasFound },
-        { value: stats.masterTotal - stats.idasFound },
-      ],
-    }
-  }
-
-  function buildTrend(trend) {
-    return (trend?.points ?? []).map(p => ({
-      date:  String(p.date).slice(5),
-      value: p.totalBakiDebet,
-    }))
-  }
-
-  const spbuDonut     = buildDonut(spbuStats)
-  const bpjsDonut     = buildDonut(bpjsStats)
-  const indomaretDonut = buildDonut(indomaretStats)
-  const spbuTrendPts  = buildTrend(spbuTrend)
-  const bpjsTrendPts  = buildTrend(bpjsTrend)
-  const indomaretTrendPts = buildTrend(indomaretTrend)
 
   // Productivity summary data
   const prodRows = Array.isArray(productivityData?.rows) ? productivityData.rows : []

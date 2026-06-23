@@ -3,7 +3,6 @@ import { authOptions } from '../auth.js'
 import AppHeader from './components/AppHeader.jsx'
 import HomeDashboard from './components/HomeDashboard.jsx'
 import { getStorage } from '../lib/storage/index.js'
-import { computeMergeStats } from '../lib/business-utils.js'
 import { applyScope, getScopeFromSession } from '../lib/access-scope.js'
 
 export default async function HubPage() {
@@ -25,12 +24,6 @@ export default async function HubPage() {
     realKreditMeta, realKreditData,
     posisiMeta, posisiData,
     realHarianMeta, realHarianData,
-    spbuMeta, spbuIdasData, spbuManualData,
-    bpjsMeta, bpjsIdasData, bpjsManualData,
-    indomaretMeta, indomaretIdasData, indomaretManualData,
-    spbuTrend,
-    bpjsTrend,
-    indomaretTrend,
     rkapKurData,
     rkapKumkData,
     rkapPosisiData,
@@ -46,28 +39,12 @@ export default async function HubPage() {
     storage.get('posisi_kredit_parsed.json'),
     storage.get('realisasi_metadata.json'),
     storage.get('realisasi_parsed.json'),
-    storage.get('prk_spbu_metadata.json'),
-    storage.get('prk_spbu_parsed.json'),
-    storage.get('prk_spbu_manual_parsed.json'),
-    storage.get('bpjs_metadata.json'),
-    storage.get('bpjs_parsed.json'),
-    storage.get('bpjs_manual_parsed.json'),
-    storage.get('indomaret_metadata.json'),
-    storage.get('indomaret_parsed.json'),
-    storage.get('indomaret_manual_parsed.json'),
-    storage.get('prk_spbu_trend_parsed.json'),
-    storage.get('bpjs_trend_parsed.json'),
-    storage.get('indomaret_trend_parsed.json'),
     storage.get('rkap_kur_parsed.json'),
     storage.get('rkap_kumk_parsed.json'),
     storage.get('rkap_posisi_parsed.json'),
     storage.get('productivity_metadata.json'),
     storage.get('productivity_parsed.json'),
   ])
-
-  const spbuStats      = computeMergeStats(spbuIdasData, spbuManualData?.rows)
-  const bpjsStats      = computeMergeStats(bpjsIdasData, bpjsManualData?.rows)
-  const indomaretStats = computeMergeStats(indomaretIdasData, indomaretManualData?.rows)
 
   // Apply office-level scope filtering (national users: no-op)
   const scopedNplData         = applyScope(nplData,         scope, 'npl')
@@ -89,9 +66,6 @@ export default async function HubPage() {
         realKreditData={scopedRealKreditData} realKreditMeta={realKreditMeta}
         posisiData={scopedPosisiData}         posisiMeta={posisiMeta}
         realHarianData={realHarianData}       realHarianMeta={realHarianMeta}
-        spbuStats={spbuStats}                 spbuMeta={spbuMeta}           spbuTrend={spbuTrend}
-        bpjsStats={bpjsStats}                 bpjsMeta={bpjsMeta}           bpjsTrend={bpjsTrend}
-        indomaretStats={indomaretStats}       indomaretMeta={indomaretMeta} indomaretTrend={indomaretTrend}
         rkapKurData={scopedRkapKurData}       rkapKumkData={scopedRkapKumkData}   rkapPosisiData={scopedRkapPosisiData}
         productivityData={
           productivityData?.rows
