@@ -67,7 +67,7 @@ export async function middleware(req) {
     return NextResponse.redirect(url)
   }
 
-  if (pathname.startsWith('/monitoring/business') && token?.accessScope !== 'national') {
+  if (pathname.startsWith('/monitoring/partnership') && token?.accessScope !== 'national') {
     const url = req.nextUrl.clone()
     url.pathname = '/monitoring'
     url.search = ''
