@@ -42,7 +42,7 @@ export async function POST(request) {
   }
 
   const body = await request.json()
-  const { name, priority, startDate, endDate, comment, lastUpdateStatus } = body
+  const { name, priority, startDate, endDate, comment, lastUpdateStatus, tasks } = body
 
   const partnership = await prisma.partnership.create({
     data: {
@@ -52,7 +52,9 @@ export async function POST(request) {
       endDate: endDate ? new Date(endDate) : new Date(),
       lastUpdateStatus: lastUpdateStatus || '',
       comment: comment || '',
-      tasks: serializeTasks(defaultTasks(startDate || new Date())),
+      tasks: Array.isArray(tasks) && tasks.length > 0
+        ? serializeTasks(tasks)
+        : serializeTasks(defaultTasks(startDate || new Date())),
       lastUpdateDate: new Date(),
       createdBy: user.name,
     },
