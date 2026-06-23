@@ -205,82 +205,85 @@ export default function PartnershipGantt({ partners }) {
                       </div>
                     )
                   }
-                  return null
-                })()}
 
-                {/* Task rows */}
-                {TASK_STAGES.map((stageName) => {
-                  const task = taskByName[stageName]
-                  const pic = task?.pic || ''
-                  const progress = task?.progress ?? 0 // 0-1 float
-                  const progressPct = Math.round(progress * 100)
-                  const hasBar = task?.startDate && task?.endDate
-                  const pos = hasBar ? barPosition(task.startDate, task.endDate, minMs, totalMs) : null
-
+                  {/* Task rows */}
                   return (
-                    <div key={stageName} className="flex items-center hover:bg-gray-50 border-b border-gray-50">
-                      {/* Task label + PIC + progress */}
-                      <div
-                        className="flex-shrink-0 border-r border-gray-200 px-3 py-1.5"
-                        style={{ width: LEFT_COL_W }}
-                      >
-                        <div className="text-xs font-medium text-gray-700 truncate">{stageName}</div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {pic && (
-                            <span className="text-xs text-gray-400 truncate max-w-[90px]">{pic}</span>
-                          )}
-                          {task && (
-                            <span className="text-xs text-gray-500 ml-auto flex-shrink-0">{progressPct}%</span>
-                          )}
-                        </div>
-                      </div>
+                    <>
+                      {TASK_STAGES.map((stageName) => {
+                        const task = taskByName[stageName]
+                        const pic = task?.pic || ''
+                        const progress = task?.progress ?? 0 // 0-1 float
+                        const progressPct = Math.round(progress * 100)
+                        const hasBar = task?.startDate && task?.endDate
+                        const pos = hasBar ? barPosition(task.startDate, task.endDate, minMs, totalMs) : null
 
-                      {/* Timeline bar */}
-                      <div
-                        className="relative"
-                        style={{ width: timelineWidth, height: 32 }}
-                      >
-                        {/* Grid lines */}
-                        {weekHeaders.map((_, i) => (
-                          <div
-                            key={i}
-                            className="absolute top-0 bottom-0 border-r border-gray-100"
-                            style={{ left: i * WEEK_COL_W }}
-                          />
-                        ))}
+                        return (
+                          <div key={stageName} className="flex items-center hover:bg-gray-50 border-b border-gray-50">
+                            {/* Task label + PIC + progress */}
+                            <div
+                              className="flex-shrink-0 border-r border-gray-200 px-3 py-1.5"
+                              style={{ width: LEFT_COL_W }}
+                            >
+                              <div className="text-xs font-medium text-gray-700 truncate">{stageName}</div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {pic && (
+                                  <span className="text-xs text-gray-400 truncate max-w-[90px]">{pic}</span>
+                                )}
+                                {task && (
+                                  <span className="text-xs text-gray-500 ml-auto flex-shrink-0">{progressPct}%</span>
+                                )}
+                              </div>
+                            </div>
 
-                        {pos ? (
-                          <>
-                            {/* Background bar (gray) */}
+                            {/* Timeline bar */}
                             <div
-                              className="absolute top-1/2 -translate-y-1/2 rounded"
-                              style={{
-                                left: (pos.left / 100) * timelineWidth,
-                                width: (pos.width / 100) * timelineWidth,
-                                height: 8,
-                                backgroundColor: '#e5e7eb',
-                              }}
-                            />
-                            {/* Progress fill (BTN_BLUE) */}
-                            <div
-                              className="absolute top-1/2 -translate-y-1/2 rounded"
-                              style={{
-                                left: (pos.left / 100) * timelineWidth,
-                                width: ((pos.width / 100) * timelineWidth) * Math.min(1, Math.max(0, progress)),
-                                height: 8,
-                                backgroundColor: BTN_BLUE,
-                              }}
-                            />
-                          </>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center px-2">
-                            <span className="text-xs text-gray-300">—</span>
+                              className="relative"
+                              style={{ width: timelineWidth, height: 32 }}
+                            >
+                              {/* Grid lines */}
+                              {weekHeaders.map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="absolute top-0 bottom-0 border-r border-gray-100"
+                                  style={{ left: i * WEEK_COL_W }}
+                                />
+                              ))}
+
+                              {pos ? (
+                                <>
+                                  {/* Background bar (gray) */}
+                                  <div
+                                    className="absolute top-1/2 -translate-y-1/2 rounded"
+                                    style={{
+                                      left: (pos.left / 100) * timelineWidth,
+                                      width: (pos.width / 100) * timelineWidth,
+                                      height: 8,
+                                      backgroundColor: '#e5e7eb',
+                                    }}
+                                  />
+                                  {/* Progress fill (BTN_BLUE) */}
+                                  <div
+                                    className="absolute top-1/2 -translate-y-1/2 rounded"
+                                    style={{
+                                      left: (pos.left / 100) * timelineWidth,
+                                      width: ((pos.width / 100) * timelineWidth) * Math.min(1, Math.max(0, progress)),
+                                      height: 8,
+                                      backgroundColor: BTN_BLUE,
+                                    }}
+                                  />
+                                </>
+                              ) : (
+                                <div className="absolute inset-0 flex items-center px-2">
+                                  <span className="text-xs text-gray-300">—</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        )
+                      })}
+                    </>
                   )
-                })}
+                })()}
               </div>
             )
           })}
