@@ -71,6 +71,27 @@ export default function MonitoringPage() {
 
     if (currentPage === 0) {
       if (nplLoading || kol2Loading || realisasiKreditLoading || posisiKreditLoading) return <LoadingCard />
+
+      if (user?.accessScope === 'cabang' && user?.kanwil) {
+        const idx = KANWIL_LIST.indexOf(user.kanwil)
+        if (idx !== -1) {
+          return (
+            <KanwilDetail
+              nplData={nplData}
+              kol2Data={kol2Data}
+              realisasiKreditData={realisasiKreditData}
+              posisiKreditData={posisiKreditData}
+              kanwilIndex={idx + 1}
+              cabangName={user.cabang}
+              nplMetadata={nplMetadata}
+              kol2Metadata={kol2Metadata}
+              realisasiKreditMetadata={realisasiKreditMetadata}
+              posisiKreditMetadata={posisiKreditMetadata}
+            />
+          )
+        }
+      }
+
       return (
         <Dashboard
           nplData={nplData}

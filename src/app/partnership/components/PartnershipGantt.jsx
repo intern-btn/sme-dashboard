@@ -137,12 +137,12 @@ export default function PartnershipGantt({ partners }) {
             return (
               <div key={partner.id} className="border-b border-gray-200">
                 {/* Partner header row */}
-                <div className="flex items-center bg-gray-50 border-b border-gray-100">
+                <div className="flex items-center border-b border-gray-100" style={{ backgroundColor: '#003d7a' }}>
                   <div
                     className="flex-shrink-0 border-r border-gray-200 px-3 py-2 flex items-center gap-2"
                     style={{ width: LEFT_COL_W }}
                   >
-                    <span className="text-sm font-semibold text-gray-900 truncate">{partner.name}</span>
+                    <span className="text-sm font-semibold text-white truncate">{partner.name}</span>
                     {partner.priority && (
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${PRIORITY_BADGE[partner.priority] || 'bg-gray-100 text-gray-600'}`}>
                         {partner.priority}
@@ -183,6 +183,30 @@ export default function PartnershipGantt({ partners }) {
                     })()}
                   </div>
                 </div>
+
+                {/* Check if partner has any task dates */}
+                {(() => {
+                  const partnerHasDates = tasks.some(t => t.startDate || t.endDate)
+                  if (!partnerHasDates) {
+                    return (
+                      <div className="flex items-center border-b border-gray-50">
+                        <div
+                          className="flex-shrink-0 border-r border-gray-200 px-3 py-1.5"
+                          style={{ width: LEFT_COL_W }}
+                        >
+                          <div className="text-xs text-gray-400">—</div>
+                        </div>
+                        <div
+                          className="relative px-2 py-2 flex items-center"
+                          style={{ width: timelineWidth }}
+                        >
+                          <span className="text-xs text-gray-400">Belum ada tanggal task</span>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
 
                 {/* Task rows */}
                 {TASK_STAGES.map((stageName) => {

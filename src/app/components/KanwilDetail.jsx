@@ -18,6 +18,7 @@ export default function KanwilDetail({
   realisasiKreditData,
   posisiKreditData,
   kanwilIndex,
+  cabangName,
   nplMetadata,
   kol2Metadata,
   realisasiKreditMetadata,
@@ -64,7 +65,7 @@ export default function KanwilDetail({
         ))}
         <div className="ml-auto flex items-center pr-4">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Kanwil {currentKanwil}
+            {cabangName ? `Cabang ${cabangName} — Kanwil ${currentKanwil}` : `Kanwil ${currentKanwil}`}
           </span>
         </div>
       </div>

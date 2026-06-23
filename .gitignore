@@ -37,3 +37,5 @@ _migrate.mjs
 # editor / tool config
 .claude/
 .superpowers/
+
+business-monitoring*.html

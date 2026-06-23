@@ -215,11 +215,7 @@ export default function PartnershipDashboard({ partners, onEdit, onDelete, isNat
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                if (window.confirm(`Hapus partner "${p.name}"?`)) {
-                                  onDelete(p.id)
-                                }
-                              }}
+                              onClick={() => onDelete(p.id)}
                               className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 font-medium"
                             >
                               Hapus
