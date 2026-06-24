@@ -38,4 +38,7 @@ _migrate.mjs
 .claude/
 .superpowers/
 
+# internal docs (compliance, architecture notes — not for version control)
+/docs/
+
 business-monitoring*.html
