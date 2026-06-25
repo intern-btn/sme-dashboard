@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
+function noStore(response) {
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+  return response
+}
+
 export async function middleware(req) {
   const { pathname } = req.nextUrl
 
@@ -20,9 +25,9 @@ export async function middleware(req) {
       const url = req.nextUrl.clone()
       url.pathname = '/verify-otp'
       url.search = ''
-      return NextResponse.redirect(url)
+      return noStore(NextResponse.redirect(url))
     }
-    return NextResponse.next()
+    return noStore(NextResponse.next())
   }
 
   if (!isLoggedIn) {
@@ -30,15 +35,15 @@ export async function middleware(req) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('callbackUrl', callbackUrl)
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
   if (token.mustChangePassword === true) {
-    if (isChangePwdPage) return NextResponse.next()
+    if (isChangePwdPage) return noStore(NextResponse.next())
     const url = req.nextUrl.clone()
     url.pathname = '/change-password'
     url.search = ''
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
   // mustChangePassword is false — kick out of /change-password so it never becomes a TOTP callbackUrl
@@ -46,35 +51,35 @@ export async function middleware(req) {
     const url = req.nextUrl.clone()
     url.pathname = '/'
     url.search = ''
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
   if (token.totpVerified !== true) {
-    if (isTotpPage) return NextResponse.next()
+    if (isTotpPage) return noStore(NextResponse.next())
 
     const callbackUrl = `${pathname}${req.nextUrl.search || ''}`
     const url = req.nextUrl.clone()
     url.pathname = '/verify-otp'
     url.search = ''
     url.searchParams.set('callbackUrl', callbackUrl)
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
   if (pathname.startsWith('/admin') && token?.role !== 'admin') {
     const url = req.nextUrl.clone()
     url.pathname = '/'
     url.search = ''
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
   if (pathname.startsWith('/monitoring/partnership') && token?.accessScope !== 'national') {
     const url = req.nextUrl.clone()
     url.pathname = '/monitoring'
     url.search = ''
-    return NextResponse.redirect(url)
+    return noStore(NextResponse.redirect(url))
   }
 
-  return NextResponse.next()
+  return noStore(NextResponse.next())
 }
 
 export const config = {

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useLayoutEffect, useRef, useState, useEffect } from 'react'
 
@@ -16,7 +16,9 @@ function getInitials(name) {
 }
 
 function UserMenu({ user }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
@@ -26,6 +28,13 @@ function UserMenu({ user }) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    await signOut({ redirect: false, callbackUrl: '/login' })
+    router.replace('/login')
+    router.refresh()
+  }
 
   return (
     <div className="relative" ref={ref}>
@@ -77,13 +86,14 @@ function UserMenu({ user }) {
             )}
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={handleLogout}
+              disabled={loggingOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Keluar
+              {loggingOut ? 'Keluar...' : 'Keluar'}
             </button>
           </div>
         </div>
@@ -138,14 +148,6 @@ export default function AppHeader({
   useEffect(() => {
     setMobileNavOpen(false)
   }, [pathname])
-
-  useEffect(() => {
-    const handlePageShow = (e) => {
-      if (e.persisted && !user) window.location.reload()
-    }
-    window.addEventListener('pageshow', handlePageShow)
-    return () => window.removeEventListener('pageshow', handlePageShow)
-  }, [user])
 
   const handleMobileMenuClick = () => {
     if (showMenuButton && onMenuClick) onMenuClick()
