@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { TASK_STAGES } from '../../../lib/partnership.js'
 
 const BTN_BLUE = '#003d7a'
@@ -49,9 +50,24 @@ function barPosition(startDate, endDate, minMs, totalMs) {
 }
 
 export default function PartnershipGantt({ partners }) {
-  const list = Array.isArray(partners) ? partners : []
+  const list = (Array.isArray(partners) ? partners : []).filter(p => {
+    const lastTask = Array.isArray(p.tasks)
+      ? p.tasks.find(t => t.name === 'Sosialisasi Eksternal')
+      : null
+    return !(lastTask?.progress >= 1)
+  })
 
-  // Collect all start/end dates across all partners and their tasks
+  const [expandedIds, setExpandedIds] = useState(new Set())
+
+  function toggleExpanded(id) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // Collect all start/end dates across filtered partners and their tasks
   let allDates = []
   for (const p of list) {
     if (p.startDate) allDates.push(new Date(p.startDate).getTime())
@@ -137,11 +153,26 @@ export default function PartnershipGantt({ partners }) {
             return (
               <div key={partner.id} className="border-b border-gray-200">
                 {/* Partner header row */}
-                <div className="flex items-center border-b border-gray-100" style={{ backgroundColor: '#003d7a' }}>
+                <div
+                  className="flex items-center border-b border-gray-100 cursor-pointer select-none"
+                  style={{ backgroundColor: '#003d7a' }}
+                  onClick={() => toggleExpanded(partner.id)}
+                >
                   <div
                     className="flex-shrink-0 border-r border-gray-200 px-3 py-2 flex items-center gap-2"
                     style={{ width: LEFT_COL_W }}
                   >
+                    <svg
+                      className={`w-3 h-3 flex-shrink-0 text-white transition-transform duration-150 ${expandedIds.has(partner.id) ? 'rotate-90' : ''}`}
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="4,2 8,6 4,10" />
+                    </svg>
                     <span className="text-sm font-semibold text-white truncate">{partner.name}</span>
                     {partner.priority && (
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${PRIORITY_BADGE[partner.priority] || 'bg-gray-100 text-gray-600'}`}>
@@ -185,7 +216,7 @@ export default function PartnershipGantt({ partners }) {
                 </div>
 
                 {/* Check if partner has any task dates */}
-                {(() => {
+                {expandedIds.has(partner.id) && (() => {
                   const partnerHasDates = tasks.some(t => t.startDate || t.endDate)
                   if (!partnerHasDates) {
                     return (
