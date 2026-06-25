@@ -63,7 +63,10 @@ function formatDateTime(dateString) {
 
 function fmt(val) {
   if (val == null || isNaN(val)) return '–'
-  return Number(val).toLocaleString('id-ID')
+  return Number(val).toLocaleString('id-ID', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  })
 }
 
 function fmtJt(val) {

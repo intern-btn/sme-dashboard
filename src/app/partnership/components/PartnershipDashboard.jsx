@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { weeksLeft, statusDistribution, priorityDistribution } from '../../../lib/partnership.js'
 
@@ -51,6 +52,8 @@ function formatDate(dateStr) {
 
 export default function PartnershipDashboard({ partners, onEdit, onDelete, isNational }) {
   const list = Array.isArray(partners) ? partners : []
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   // KPI counts
   const totalCount = list.length
@@ -72,6 +75,11 @@ export default function PartnershipDashboard({ partners, onEdit, onDelete, isNat
     const db = b.endDate ? new Date(b.endDate).getTime() : 0
     return da - db
   })
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const pageStart = (safePage - 1) * PAGE_SIZE
+  const paginated = sorted.slice(pageStart, pageStart + PAGE_SIZE)
 
   // Charts data
   const statusDist = statusDistribution(list)
@@ -185,7 +193,7 @@ export default function PartnershipDashboard({ partners, onEdit, onDelete, isNat
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {sorted.map((p) => {
+                {paginated.map((p) => {
                   const wl = p.endDate ? weeksLeft(p.endDate) : null
                   const wlText = wl !== null ? `${wl.toFixed(1)} wks` : '—'
                   const wlRed = wl !== null && wl < 0
@@ -228,6 +236,45 @@ export default function PartnershipDashboard({ partners, onEdit, onDelete, isNat
                 })}
               </tbody>
             </table>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-t border-gray-200 bg-white">
+              <div className="text-xs text-gray-500">
+                Menampilkan {pageStart + 1}-{Math.min(pageStart + paginated.length, sorted.length)} dari {sorted.length} partnership
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                    disabled={safePage === 1}
+                    className="px-2.5 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(page => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-8 px-2.5 py-1.5 rounded-md border text-xs font-semibold ${
+                        page === safePage
+                          ? 'border-[#003d7a] bg-[#003d7a] text-white'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                    disabled={safePage === totalPages}
+                    className="px-2.5 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
