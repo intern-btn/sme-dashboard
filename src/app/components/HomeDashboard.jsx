@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   ResponsiveContainer,
@@ -106,10 +106,13 @@ function FreshnessDot({ uploadDate }) {
   )
 }
 
-function SectionHeader({ title, href }) {
+function SectionHeader({ title, href, children }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{title}</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{title}</h2>
+        {children}
+      </div>
       <Link href={href} className="text-xs font-medium text-[#003d7a] hover:underline underline-offset-2">
         Lihat detail →
       </Link>
@@ -720,11 +723,22 @@ export default function HomeDashboard({
 
   // Productivity summary data
   const prodRows = Array.isArray(productivityData?.rows) ? productivityData.rows : []
-  const prodTotal   = prodRows.length
-  const prodSangat  = prodRows.filter(r => r.kategori === 'Sangat Produktif').length
-  const prodKurang  = prodRows.filter(r => r.kategori === 'Kurang Produktif').length
-  const prodTidak   = prodRows.filter(r => r.kategori === 'Tidak Produktif').length
-  const achValues   = prodRows.map(r => r.pctAch).filter(v => v != null && !isNaN(v))
+  const [prodMode, setProdMode] = useState('all')
+  const prodFiltered = useMemo(() => {
+    const base = (jab) => String(jab || '').replace(/^#/, '')
+    return prodRows.filter(r => {
+      const b = base(r.jabatan)
+      if (prodMode === 'cp') return b === 'CPS'
+      if (prodMode === 'sme') return b === 'SMES' || b === 'SMECPS'
+      return b === 'CPS' || b === 'SMES' || b === 'SMECPS'
+    })
+  }, [prodRows, prodMode])
+  const hasProdData = prodRows.length > 0
+  const prodTotal   = prodFiltered.length
+  const prodSangat  = prodFiltered.filter(r => r.kategori === 'Sangat Produktif').length
+  const prodKurang  = prodFiltered.filter(r => r.kategori === 'Kurang Produktif').length
+  const prodTidak   = prodFiltered.filter(r => r.kategori === 'Tidak Produktif').length
+  const achValues   = prodFiltered.map(r => r.pctAch).filter(v => v != null && !isNaN(v))
   const prodAvgAch  = achValues.length > 0
     ? (achValues.reduce((a, b) => a + b, 0) / achValues.length).toFixed(1)
     : null
@@ -808,14 +822,14 @@ export default function HomeDashboard({
             <StatCard label="Realisasi Kredit" uploadDate={realKreditMeta?.uploadDate} style={cardStyle(2)}>
               <div className="space-y-0.5">
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">KUMK</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">UMKM</p>
                   <p className="text-xl font-bold text-[#003d7a] leading-tight">
-                    {fmt(realK?.kumk_real_current)}
+                    {fmt(realK?.umkm_real_current)}
                     <span className="text-xs font-normal text-gray-500 ml-1">Jt</span>
                   </p>
                 </div>
                 <MetricRow label="KUR"  value={`${fmt(realK?.kur_total_current)} Jt`} />
-                <MetricRow label="UMKM" value={`${fmt(realK?.umkm_real_current)} Jt`} />
+                <MetricRow label="KUMK" value={`${fmt(realK?.kumk_real_current)} Jt`} />
               </div>
               <div className="mt-2">
                 {realKChartData.length > 0 ? (
@@ -909,11 +923,28 @@ export default function HomeDashboard({
 
         {/* ── Section 3: Productivity — national users only ── */}
         {(!user?.accessScope || user.accessScope === 'national') && <section>
-          <SectionHeader title="Productivity" href="/monitoring/productivity" />
-          {prodTotal > 0 ? (
+          <SectionHeader title="Productivity" href="/monitoring/productivity">
+            {hasProdData && (
+              <SegToggle
+                options={[
+                  { value: 'all', label: 'Total' },
+                  { value: 'sme', label: 'SME' },
+                  { value: 'cp', label: 'CP' },
+                ]}
+                value={prodMode}
+                onChange={setProdMode}
+              />
+            )}
+          </SectionHeader>
+          {hasProdData ? (
+            prodTotal === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-400" style={cardStyle(5)}>
+                Tidak ada data untuk mode ini.
+              </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Left: category metrics */}
-              <StatCard label="Produktivitas RM" uploadDate={productivityMeta?.uploadedAt} style={cardStyle(5)}>
+              <StatCard label={`Produktivitas RM - ${prodMode === 'cp' ? 'CP' : prodMode === 'sme' ? 'SME' : 'Total'}`} uploadDate={productivityMeta?.uploadedAt} style={cardStyle(5)}>
                 <div className="flex flex-col gap-4">
                   <p className="text-3xl font-bold text-[#003d7a] leading-none">
                     {prodTotal.toLocaleString('id-ID')}
@@ -1005,6 +1036,7 @@ export default function HomeDashboard({
                 </div>
               </StatCard>
             </div>
+            )
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-400" style={cardStyle(5)}>
               Belum ada data Productivity. Upload file PRD via{' '}

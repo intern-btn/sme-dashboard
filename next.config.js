@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  output: process.env.NETLIFY ? undefined : 'standalone',
   reactStrictMode: true,
   transpilePackages: ['recharts', 'recharts-scale', 'd3-scale', 'd3-shape', 'd3-path'],
   env: {

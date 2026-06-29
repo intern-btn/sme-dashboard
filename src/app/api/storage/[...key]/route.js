@@ -1,28 +1,27 @@
 import { NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
 import path from 'path'
+import { getStorage } from '../../../../lib/storage/index.js'
 
 export const runtime = 'nodejs'
 
 export async function GET(request, { params }) {
-  // Only available in local storage mode
-  if (process.env.STORAGE_PROVIDER !== 'local' && process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ error: 'Not available in blob mode' }, { status: 404 })
-  }
-
   const { key: keyParam } = await params
   const key = Array.isArray(keyParam) ? keyParam.join('/') : keyParam
-  const dataDir = path.resolve(process.env.DATA_DIR || './data')
-  const filePath = path.resolve(path.join(dataDir, key))
+  const normalizedKey = path.posix.normalize(key.replace(/\\/g, '/'))
 
-  // Prevent path traversal
-  if (!filePath.startsWith(dataDir)) {
+  if (normalizedKey.startsWith('../') || normalizedKey === '..' || path.isAbsolute(normalizedKey)) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
 
   try {
-    const content = await fs.readFile(filePath)
-    const ext = path.extname(filePath).toLowerCase()
+    const storage = getStorage()
+    const raw = await storage.getRaw(normalizedKey)
+    if (raw === null) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
+
+    const content = Buffer.from(raw)
+    const ext = path.extname(normalizedKey).toLowerCase()
     const contentType = ext === '.json' ? 'application/json' : 'application/octet-stream'
 
     return new Response(content, {
@@ -31,7 +30,7 @@ export async function GET(request, { params }) {
         'Cache-Control': 'no-store',
       },
     })
-  } catch {
+  } catch (error) {
     return NextResponse.json({ error: 'File not found' }, { status: 404 })
   }
 }

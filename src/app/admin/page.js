@@ -1,7 +1,230 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import * as XLSX from 'xlsx'
 import AppHeader from '../components/AppHeader'
+import {
+  parseNPLExcel,
+  parseKOL2Excel,
+  parseRealisasiExcel,
+  parseRealisasiKreditExcel,
+  parsePosisiKreditExcel,
+  parseRKAPKURExcel,
+  parseRKAPKUMKExcel,
+  parseRKAPPosisiExcel
+} from '../../lib/excel-parsers.js'
+
+const JSON_GZIP_THRESHOLD = 5 * 1024 * 1024
+
+async function postJson(url, payload) {
+  const json = JSON.stringify(payload)
+  const headers = { 'Content-Type': 'application/json' }
+  let body = json
+
+  if (json.length > JSON_GZIP_THRESHOLD && typeof CompressionStream !== 'undefined') {
+    const stream = new Blob([json], { type: 'application/json' })
+      .stream()
+      .pipeThrough(new CompressionStream('gzip'))
+    body = await new Response(stream).arrayBuffer()
+    headers['Content-Encoding'] = 'gzip'
+  }
+
+  const response = await fetch(url, { method: 'POST', headers, body })
+  const result = await response.json()
+  if (!response.ok) {
+    throw new Error(result.error || result.details || 'Upload failed')
+  }
+  return result
+}
+
+function parseNum(val) {
+  if (val == null || val === '') return null
+  const n = Number(String(val).replace(/,/g, '.'))
+  return isNaN(n) ? null : n
+}
+
+function parseProductivityRow(row) {
+  return {
+    rmCode: String(row[0] ?? '').trim(),
+    nip: String(row[1] ?? '').trim(),
+    nama: String(row[2] ?? '').trim(),
+    kj: String(row[3] ?? '').trim(),
+    jabatan: String(row[4] ?? '').trim(),
+    kOutlet: String(row[5] ?? '').trim(),
+    outlet: String(row[6] ?? '').trim(),
+    jenisOutlet: String(row[7] ?? '').trim(),
+    kantorCabang: String(row[8] ?? '').trim(),
+    kantorWilayah: String(row[9] ?? '').trim(),
+    realisasi: parseNum(row[10]),
+    target: parseNum(row[11]),
+    pctAch: parseNum(row[12]),
+    skor: parseNum(row[13]),
+    kategori: String(row[14] ?? '').trim(),
+    noa: parseNum(row[15]),
+    pipelineTarget: parseNum(row[17]),
+    pipelineNum: parseNum(row[18]),
+    pipelineVol: parseNum(row[19]),
+    pipelineGap: parseNum(row[20]),
+  }
+}
+
+async function parseProductivityFile(file) {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+  const sheetName = workbook.SheetNames.includes('PRD')
+    ? 'PRD'
+    : workbook.SheetNames[0]
+
+  if (!sheetName) {
+    throw new Error('File tidak mengandung sheet manapun')
+  }
+
+  const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' })
+  const dataRows = rawRows.slice(3).filter(row =>
+    row.length > 0 && String(row[0] ?? '').trim() !== ''
+  )
+
+  if (dataRows.length === 0) {
+    throw new Error('Sheet PRD tidak mengandung data')
+  }
+
+  const nonRmJabatan = new Set(['SCPH', 'SBH'])
+  const rows = dataRows.map(parseProductivityRow).filter(r =>
+    (r.rmCode || r.nama) && !nonRmJabatan.has(r.jabatan)
+  )
+
+  return { rows, sheetName }
+}
+
+function getMonitoringStats(datasets) {
+  const byKey = Object.fromEntries(datasets.map((dataset) => [dataset.datasetKey, dataset.data]))
+  return {
+    nplKanwil: byKey.npl?.kanwilData?.length || 0,
+    nplCabang: byKey.npl?.cabangData?.length || 0,
+    kol2Kanwil: byKey.kol2?.kanwilData?.length || 0,
+    kol2Cabang: byKey.kol2?.cabangData?.length || 0,
+    realisasiDays: byKey.realisasi?.dailyData?.length || 0,
+    realisasiKreditKanwil: byKey.realisasi_kredit?.kanwilData?.length || 0,
+    realisasiKreditCabang: byKey.realisasi_kredit?.cabangData?.length || 0,
+    posisiKreditKanwil: byKey.posisi_kredit?.kanwilData?.length || 0,
+    posisiKreditCabang: byKey.posisi_kredit?.cabangData?.length || 0,
+    rkapKurKanwil: byKey.rkap_kur?.kanwilData?.length ?? null,
+    rkapKumkKanwil: byKey.rkap_kumk?.kanwilData?.length ?? null,
+    rkapPosisiKanwil: byKey.rkap_posisi?.kanwilData?.length ?? null,
+  }
+}
+
+async function parseMonitoringFile(file) {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+
+  const sheetMap = {
+    npl: null,
+    kol2: null,
+    realisasi: null,
+    realisasi_kredit: null,
+    realisasi_kredit_fallback: null,
+    posisi_kredit: null,
+    rkap_kur: null,
+    rkap_kumk: null,
+    rkap_posisi: null
+  }
+
+  const patterns = {
+    rkap_kur: /^44a3/i,
+    rkap_kumk: /^44a5/i,
+    rkap_posisi: /^47a/i,
+    npl: /^49c/i,
+    kol2: /^49b/i,
+    realisasi: /^22a/i,
+    realisasi_kredit: /^44a1/i,
+    realisasi_kredit_fallback: /^44a\b/i,
+    posisi_kredit: /^47\.\s*posisi/i
+  }
+
+  for (const sheetName of workbook.SheetNames) {
+    if (patterns.rkap_kur.test(sheetName)) {
+      sheetMap.rkap_kur = sheetName
+    } else if (patterns.rkap_kumk.test(sheetName)) {
+      sheetMap.rkap_kumk = sheetName
+    } else if (patterns.rkap_posisi.test(sheetName)) {
+      sheetMap.rkap_posisi = sheetName
+    } else if (patterns.realisasi_kredit.test(sheetName)) {
+      sheetMap.realisasi_kredit = sheetName
+    } else if (patterns.realisasi_kredit_fallback.test(sheetName)) {
+      sheetMap.realisasi_kredit_fallback = sheetName
+    } else if (patterns.posisi_kredit.test(sheetName)) {
+      sheetMap.posisi_kredit = sheetName
+    } else if (patterns.realisasi.test(sheetName)) {
+      sheetMap.realisasi = sheetName
+    } else if (patterns.npl.test(sheetName)) {
+      sheetMap.npl = sheetName
+    } else if (patterns.kol2.test(sheetName)) {
+      sheetMap.kol2 = sheetName
+    }
+  }
+
+  const parseSheet = (sheetName) => ({
+    SheetNames: [sheetName],
+    Sheets: { [sheetName]: workbook.Sheets[sheetName] }
+  })
+
+  const datasets = []
+  const parsedSheets = []
+  const missingSheets = []
+
+  const addDataset = (datasetKey, label, data, sheetLabel = label) => {
+    if (!data) return
+    datasets.push({ datasetKey, label, data, sheetLabel })
+    parsedSheets.push(sheetLabel)
+  }
+
+  if (sheetMap.npl) addDataset('npl', 'NPL', parseNPLExcel(parseSheet(sheetMap.npl)))
+  else missingSheets.push('NPL')
+
+  if (sheetMap.kol2) addDataset('kol2', 'KOL2', parseKOL2Excel(parseSheet(sheetMap.kol2)))
+  else missingSheets.push('KOL2')
+
+  if (sheetMap.realisasi) addDataset('realisasi', 'Realisasi', parseRealisasiExcel(parseSheet(sheetMap.realisasi)))
+  else missingSheets.push('Realisasi')
+
+  if (sheetMap.realisasi_kredit || sheetMap.realisasi_kredit_fallback) {
+    const primary = sheetMap.realisasi_kredit
+    const fallback = sheetMap.realisasi_kredit_fallback
+    try {
+      addDataset('realisasi_kredit', 'Realisasi Kredit', parseRealisasiKreditExcel(parseSheet(primary || fallback)))
+    } catch (primaryErr) {
+      if (primary && fallback) {
+        addDataset('realisasi_kredit', 'Realisasi Kredit', parseRealisasiKreditExcel(parseSheet(fallback)), 'Realisasi Kredit (fallback)')
+      } else {
+        throw primaryErr
+      }
+    }
+  } else missingSheets.push('Realisasi Kredit')
+
+  if (sheetMap.posisi_kredit) addDataset('posisi_kredit', 'Posisi Kredit', parsePosisiKreditExcel(parseSheet(sheetMap.posisi_kredit)))
+  else missingSheets.push('Posisi Kredit')
+
+  if (sheetMap.rkap_kur) addDataset('rkap_kur', 'RKAP KUR', parseRKAPKURExcel(parseSheet(sheetMap.rkap_kur)))
+  else missingSheets.push('RKAP KUR')
+
+  if (sheetMap.rkap_kumk) addDataset('rkap_kumk', 'RKAP KUMK', parseRKAPKUMKExcel(parseSheet(sheetMap.rkap_kumk)))
+  else missingSheets.push('RKAP KUMK')
+
+  if (sheetMap.rkap_posisi) addDataset('rkap_posisi', 'RKAP Posisi', parseRKAPPosisiExcel(parseSheet(sheetMap.rkap_posisi)))
+  else missingSheets.push('RKAP Posisi')
+
+  const monthInfo = datasets.find((dataset) => dataset.data?.monthInfo)?.data.monthInfo
+  const uploadDate = new Date().toISOString()
+
+  return {
+    uploadId: Date.now().toString(),
+    uploadDate,
+    monthInfo,
+    datasets,
+    parsedSheets,
+    missingSheets,
+    stats: getMonitoringStats(datasets),
+  }
+}
 
 
 export default function AdminPage() {
@@ -9,7 +232,7 @@ export default function AdminPage() {
   const [multiSheetFile, setMultiSheetFile] = useState(null)
   const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'productivity'
   const [uploading, setUploading] = useState(false)
-  const [uploadStep, setUploadStep] = useState('') // 'uploading' | 'processing' | ''
+  const [uploadStep, setUploadStep] = useState('') // 'parsing' | 'saving' | ''
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [uploadStats, setUploadStats] = useState(null)
@@ -123,53 +346,55 @@ export default function AdminPage() {
     setError('')
     setUploadStats(null)
     setUploadProgress(0)
-    setUploadStep('uploading')
+    setUploadStep('parsing')
 
     try {
-      let processResponse
+      const parsed = await parseMonitoringFile(multiSheetFile)
+      setUploadStep('saving')
 
-      if (process.env.NEXT_PUBLIC_USE_DIRECT_UPLOAD === 'true') {
-        const { upload } = await import('@vercel/blob/client')
-        const blob = await upload(multiSheetFile.name, multiSheetFile, {
-          access: 'public',
-          handleUploadUrl: '/api/upload/token',
-          onUploadProgress: (progress) => {
-            const percent = Math.round((progress.loaded / progress.total) * 100)
-            setUploadProgress(percent)
-          }
+      for (let index = 0; index < parsed.datasets.length; index++) {
+        const dataset = parsed.datasets[index]
+        const metadata = ['npl', 'kol2', 'realisasi', 'realisasi_kredit', 'posisi_kredit'].includes(dataset.datasetKey)
+          ? {
+              filename: `Multi-sheet Excel (${dataset.label} sheet)`,
+              uploadDate: parsed.uploadDate,
+              fileSize: multiSheetFile.size,
+              monthInfo: parsed.monthInfo,
+            }
+          : undefined
+
+        await postJson('/api/upload/process', {
+          action: 'save-dataset',
+          uploadId: parsed.uploadId,
+          uploadDate: parsed.uploadDate,
+          datasetKey: dataset.datasetKey,
+          data: dataset.data,
+          metadata,
         })
-        setUploadStep('processing')
-        processResponse = await fetch('/api/upload/process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ blobUrl: blob.url })
-        })
-      } else {
-        const formData = new FormData()
-        formData.append('file', multiSheetFile)
-        setUploadStep('processing')
-        processResponse = await fetch('/api/upload/process', {
-          method: 'POST',
-          body: formData
-        })
+
+        setUploadProgress(Math.round(((index + 1) / (parsed.datasets.length + 1)) * 100))
       }
 
-      const result = await processResponse.json()
-
-      if (!processResponse.ok) {
-        throw new Error(result.error || result.details || 'Processing failed')
-      }
+      await postJson('/api/upload/process', {
+        action: 'finalize',
+        uploadId: parsed.uploadId,
+        uploadDate: parsed.uploadDate,
+        monthInfo: parsed.monthInfo,
+        files: ['Multi-sheet Excel'],
+        parsedSheets: parsed.parsedSheets,
+        missingSheets: parsed.missingSheets,
+      })
 
       let successMsg = 'File berhasil diupload dan diproses!'
-      if (result.parsedSheets && result.parsedSheets.length > 0) {
-        successMsg += ` (${result.parsedSheets.join(', ')})`
+      if (parsed.parsedSheets && parsed.parsedSheets.length > 0) {
+        successMsg += ` (${parsed.parsedSheets.join(', ')})`
       }
-      if (result.missingSheets && result.missingSheets.length > 0) {
-        successMsg += ` | Sheet tidak ditemukan: ${result.missingSheets.join(', ')}`
+      if (parsed.missingSheets && parsed.missingSheets.length > 0) {
+        successMsg += ` | Sheet tidak ditemukan: ${parsed.missingSheets.join(', ')}`
       }
 
       setMessage(successMsg)
-      setUploadStats(result.stats)
+      setUploadStats(parsed.stats)
       setMultiSheetFile(null)
 
       document.querySelectorAll('input[type="file"]').forEach(input => {
@@ -192,14 +417,15 @@ export default function AdminPage() {
 
   const handleProductivityUpload = async () => {
     if (!productivityFile) { setProductivityError('Pilih file PRD Excel'); return }
-    setProductivityUploading(true); setProductivityMessage(''); setProductivityError(''); setProductivityStats(null); setProductivityStep('uploading')
+    setProductivityUploading(true); setProductivityMessage(''); setProductivityError(''); setProductivityStats(null); setProductivityStep('parsing')
     try {
-      const formData = new FormData()
-      formData.append('file', productivityFile)
-      setProductivityStep('processing')
-      const res = await fetch('/api/upload/process-productivity', { method: 'POST', body: formData })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || result.details || 'Upload failed')
+      const parsed = await parseProductivityFile(productivityFile)
+      setProductivityStep('saving')
+      const result = await postJson('/api/upload/process-productivity', {
+        rows: parsed.rows,
+        sheetName: parsed.sheetName,
+        uploadedAt: new Date().toISOString(),
+      })
       setProductivityMessage(`Data Productivity berhasil diproses! (${result.rowCount} RM)`)
       setProductivityStats(result)
       setProductivityFile(null)
@@ -386,8 +612,8 @@ export default function AdminPage() {
 
             {uploading && (() => {
               const steps = [
-                { key: 'uploading', label: 'Mengunggah file', pct: Math.round(uploadProgress * 0.9) || 5 },
-                { key: 'processing', label: 'Memproses di server', pct: 95 },
+                { key: 'parsing', label: 'Membaca file Excel', pct: 35 },
+                { key: 'saving', label: 'Menyimpan data', pct: Math.max(uploadProgress, 55) },
               ]
               const currentIdx = steps.findIndex(s => s.key === uploadStep)
               const barPct = currentIdx === -1 ? 5 : steps[currentIdx].pct
@@ -411,7 +637,7 @@ export default function AdminPage() {
                           </div>
                           <span className={`text-sm flex items-center gap-2 ${active ? 'text-blue-900 font-semibold' : done ? 'text-green-700' : 'text-gray-400'}`}>
                             {s.label}
-                            {active && s.key === 'uploading' && uploadProgress > 0 && <span className="text-blue-700 font-normal">{uploadProgress}%</span>}
+                            {active && s.key === 'saving' && uploadProgress > 0 && <span className="text-blue-700 font-normal">{uploadProgress}%</span>}
                             {active && <span className="inline-block w-3 h-3 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />}
                           </span>
                         </div>
@@ -484,8 +710,8 @@ export default function AdminPage() {
 
                 {productivityUploading && (() => {
                   const steps = [
-                    { key: 'uploading', label: 'Mengunggah file', pct: 40 },
-                    { key: 'processing', label: 'Membaca sheet PRD', pct: 90 },
+                    { key: 'parsing', label: 'Membaca sheet PRD', pct: 45 },
+                    { key: 'saving', label: 'Menyimpan data', pct: 90 },
                   ]
                   const currentIdx = steps.findIndex(s => s.key === productivityStep)
                   const barPct = currentIdx === -1 ? 5 : steps[currentIdx].pct

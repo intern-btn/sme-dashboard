@@ -36,6 +36,14 @@ export class LocalFsAdapter {
     }
   }
 
+  async getRaw(key) {
+    try {
+      return await fs.readFile(this._resolve(key))
+    } catch {
+      return null
+    }
+  }
+
   async list(prefix) {
     try {
       const dir = this._resolve(prefix)
